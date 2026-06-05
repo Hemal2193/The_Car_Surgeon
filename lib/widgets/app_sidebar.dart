@@ -18,7 +18,7 @@ class AppSidebar extends StatelessWidget {
       color: Colors.black,
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -28,8 +28,8 @@ class AppSidebar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.asset(
                     'assets/logo.jpeg',
-                    width: 80,
-                    height: 80,
+                    width: 120,
+                    height: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -49,7 +49,7 @@ class AppSidebar extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 55),
+          const SizedBox(height: 30),
 
           _buildMenuItem(
             title: 'Dashboard',
