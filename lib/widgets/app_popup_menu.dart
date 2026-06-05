@@ -4,19 +4,12 @@ class AppPopupMenu extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const AppPopupMenu({
-    super.key,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const AppPopupMenu({super.key, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(
-        Icons.more_vert,
-        color: Colors.black,
-      ),
+      icon: const Icon(Icons.more_vert, color: Colors.black),
 
       color: Colors.white,
 
@@ -24,9 +17,7 @@ class AppPopupMenu extends StatelessWidget {
 
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(
-          color: Colors.black12,
-        ),
+        side: const BorderSide(color: Colors.black12),
       ),
 
       onSelected: (value) {
@@ -44,20 +35,11 @@ class AppPopupMenu extends StatelessWidget {
           value: 'edit',
           child: Row(
             children: [
-              Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: Colors.black,
-              ),
+              Icon(Icons.edit_outlined, size: 18, color: Colors.black),
 
               SizedBox(width: 10),
 
-              Text(
-                'Edit',
-                style: TextStyle(
-                  color: Colors.black,
-                ),
-              ),
+              Text('Edit', style: TextStyle(color: Colors.black)),
             ],
           ),
         ),
@@ -66,20 +48,11 @@ class AppPopupMenu extends StatelessWidget {
           value: 'delete',
           child: Row(
             children: [
-              Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: Colors.black,
-              ),
+              Icon(Icons.delete_outline, size: 18, color: Colors.black),
 
               SizedBox(width: 10),
 
-              Text(
-                'Delete',
-                style: TextStyle(
-                  color: Colors.black,
-                ),
-              ),
+              Text('Delete', style: TextStyle(color: Colors.black)),
             ],
           ),
         ),

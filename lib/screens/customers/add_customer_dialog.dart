@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:get/get.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/customer_model.dart';
@@ -28,6 +27,18 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   final gstController = TextEditingController();
 
   final panController = TextEditingController();
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    contact1Controller.dispose();
+    contact2Controller.dispose();
+    addressController.dispose();
+    emailController.dispose();
+    gstController.dispose();
+    panController.dispose();
+    super.dispose();
+  }
 
   void saveCustomer() async {
     if (nameController.text.trim().isEmpty ||

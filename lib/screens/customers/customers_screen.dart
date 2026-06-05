@@ -8,8 +8,22 @@ import 'package:tcs/widgets/adder_button.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 
-class CustomersScreen extends StatelessWidget {
+class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
+
+  @override
+  State<CustomersScreen> createState() => _CustomersScreenState();
+}
+
+class _CustomersScreenState extends State<CustomersScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +57,10 @@ class CustomersScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() => _searchQuery = value.trim().toLowerCase());
+            },
             decoration: InputDecoration(
               hintText: 'Search customer...',
               prefixIcon: const Icon(Icons.search),
@@ -57,7 +75,20 @@ class CustomersScreen extends StatelessWidget {
           Expanded(
             child: GetBuilder<CustomerController>(
               builder: (controller) {
-                if (controller.customers.isEmpty) {
+                final customers = controller.customers.where((customer) {
+                  if (_searchQuery.isEmpty) return true;
+
+                  return customer.customerId.toLowerCase().contains(
+                        _searchQuery,
+                      ) ||
+                      customer.name.toLowerCase().contains(_searchQuery) ||
+                      customer.contact1.toLowerCase().contains(_searchQuery) ||
+                      (customer.gstNumber ?? '').toLowerCase().contains(
+                        _searchQuery,
+                      );
+                }).toList();
+
+                if (customers.isEmpty) {
                   return Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -84,7 +115,7 @@ class CustomersScreen extends StatelessWidget {
                         DataColumn(label: Text('Vehicles')),
                         DataColumn(label: Text('Actions')),
                       ],
-                      rows: controller.customers.map((customer) {
+                      rows: customers.map((customer) {
                         return buildCustomerRow(context, customer);
                       }).toList(),
                     ),

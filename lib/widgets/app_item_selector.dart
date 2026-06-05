@@ -34,7 +34,7 @@ class _AppItemSelectorState extends State<AppItemSelector> {
         return ListTile(
           dense: true,
           title: Text(i.name),
-          subtitle: Text("₹${i.price ?? 0}"),
+          subtitle: Text("Rs. ${i.price ?? 0}"),
           onTap: () {
             controller.text = i.name;
             widget.onSelected(i);
@@ -62,6 +62,13 @@ class _AppItemSelectorState extends State<AppItemSelector> {
     });
 
     _showOverlay();
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    controller.dispose();
+    super.dispose();
   }
 
   @override

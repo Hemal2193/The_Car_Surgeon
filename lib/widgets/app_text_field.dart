@@ -28,23 +28,16 @@ class AppTextField extends StatelessWidget {
           vertical: 14,
         ),
 
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Colors.black26,
-          ),
+          borderSide: const BorderSide(color: Colors.black26),
         ),
 
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Colors.black,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Colors.black, width: 1.5),
         ),
       ),
     );

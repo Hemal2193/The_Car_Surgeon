@@ -37,6 +37,9 @@ class _AddItemDialogState extends State<AddItemDialog> {
   @override
   void dispose() {
     _removeGstOverlay();
+    nameController.dispose();
+    hsnController.dispose();
+    priceController.dispose();
     super.dispose();
   }
 

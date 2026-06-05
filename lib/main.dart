@@ -47,10 +47,10 @@ Future<void> main() async {
   await Hive.openBox(HiveBoxes.settings);
 
   // CONTROLLERS
-  final customerController = Get.put(CustomerController());
-  final itemController = Get.put(ItemController());
-  final vehicleController = Get.put(VehicleController());
-  final invoiceController = Get.put(InvoiceController());
+  final customerController = Get.put(CustomerController(), permanent: true);
+  Get.put(ItemController(), permanent: true);
+  Get.put(VehicleController(), permanent: true);
+  Get.put(InvoiceController(), permanent: true);
 
   // IMPORTANT: INIT CACHE AFTER BOX IS READY
   customerController.initCache();
@@ -64,7 +64,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),

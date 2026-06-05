@@ -64,12 +64,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               adderButton(
                 label: "Create Invoice",
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CreateInvoiceScreen(),
-                    ),
-                  );
+                  Get.to(() => const CreateInvoiceScreen());
                 },
               ),
             ],
@@ -189,8 +184,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                       title: "Delete Invoice",
                                       message:
                                           "Are you sure you want to delete ${inv.invoiceId}?",
-                                      onDelete: () {
-                                        invoiceController.deleteInvoice(
+                                      onDelete: () async {
+                                        await invoiceController.deleteInvoice(
                                           inv.invoiceId,
                                         );
                                       },

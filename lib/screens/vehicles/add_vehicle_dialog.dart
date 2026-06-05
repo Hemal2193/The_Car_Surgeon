@@ -69,9 +69,21 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   }
 
   @override
+  void dispose() {
+    registrationController.dispose();
+    makeController.dispose();
+    modelController.dispose();
+    colorController.dispose();
+    engineController.dispose();
+    chassisController.dispose();
+    customerSearchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     Get.find<CustomerController>();
-    
+
     return Dialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

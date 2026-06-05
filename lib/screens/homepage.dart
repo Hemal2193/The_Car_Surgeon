@@ -8,7 +8,6 @@ import 'package:tcs/utils/app_pages.dart';
 import 'package:tcs/widgets/app_sidebar.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 

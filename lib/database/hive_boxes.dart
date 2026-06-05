@@ -10,6 +10,4 @@ class HiveBoxes {
   static const String invoices = 'invoices';
 
   static const String settings = 'settings';
-
-  
 }

@@ -13,8 +13,22 @@ import 'package:tcs/widgets/adder_button.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 
-class VehiclesScreen extends StatelessWidget {
+class VehiclesScreen extends StatefulWidget {
   const VehiclesScreen({super.key});
+
+  @override
+  State<VehiclesScreen> createState() => _VehiclesScreenState();
+}
+
+class _VehiclesScreenState extends State<VehiclesScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +62,10 @@ class VehiclesScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() => _searchQuery = value.trim().toLowerCase());
+            },
             decoration: InputDecoration(
               hintText: 'Search vehicle...',
               prefixIcon: const Icon(Icons.search),
@@ -62,7 +80,25 @@ class VehiclesScreen extends StatelessWidget {
           Expanded(
             child: GetBuilder<VehicleController>(
               builder: (vehicleController) {
-                if (vehicleController.vehicles.isEmpty) {
+                final vehicles = vehicleController.vehicles.where((vehicle) {
+                  if (_searchQuery.isEmpty) return true;
+
+                  final customer = CustomerCache.getById(vehicle.customerId);
+
+                  return vehicle.vehicleId.toLowerCase().contains(
+                        _searchQuery,
+                      ) ||
+                      vehicle.registrationNumber.toLowerCase().contains(
+                        _searchQuery,
+                      ) ||
+                      vehicle.make.toLowerCase().contains(_searchQuery) ||
+                      vehicle.model.toLowerCase().contains(_searchQuery) ||
+                      (customer?.name ?? '').toLowerCase().contains(
+                        _searchQuery,
+                      );
+                }).toList();
+
+                if (vehicles.isEmpty) {
                   return Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -89,7 +125,7 @@ class VehiclesScreen extends StatelessWidget {
                         DataColumn(label: Text('Model')),
                         DataColumn(label: Text('Actions')),
                       ],
-                      rows: vehicleController.vehicles.map((vehicle) {
+                      rows: vehicles.map((vehicle) {
                         return buildVehicleRow(context, vehicle);
                       }).toList(),
                     ),

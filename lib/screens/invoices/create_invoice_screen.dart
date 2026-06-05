@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart';
-import 'package:hive/hive.dart';
-import 'package:tcs/database/hive_boxes.dart';
+import 'package:get/get.dart';
+import 'package:tcs/controllers/invoice_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/widgets/app_customer_selector.dart';
@@ -28,6 +26,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   int qty = 1;
   double rate = 0;
+  int _customerSelectorVersion = 0;
+  int _itemSelectorVersion = 0;
 
   final List<_InvoiceRow> rows = [];
 
@@ -37,7 +37,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   double get grandTotal => rows.fold(0, (sum, e) => sum + e.totalAmount);
 
   void addToInvoice() {
-    if (selectedItem == null) return;
+    if (selectedItem == null || qty <= 0 || rate < 0) return;
 
     final baseAmount = qty * rate;
     final gstAmount = (baseAmount * selectedItem!.gst) / 100;
@@ -56,7 +56,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       // reset input only (NOT validation, NOT blocking)
       selectedItem = null;
       qty = 1;
+      rate = 0;
       qtyController.text = "1";
+      rateController.clear();
+      _itemSelectorVersion++;
     });
   }
 
@@ -87,13 +90,19 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       grandTotal: grandTotal,
     );
 
-    final box = Hive.box<Invoice>(HiveBoxes.invoices);
-    await box.add(invoice);
+    await Get.find<InvoiceController>().addInvoice(invoice);
 
     setState(() {
       rows.clear();
       selectedCustomer = null;
       selectedVehicle = null;
+      selectedItem = null;
+      qty = 1;
+      rate = 0;
+      qtyController.text = "1";
+      rateController.clear();
+      _customerSelectorVersion++;
+      _itemSelectorVersion++;
     });
 
     Get.snackbar("Success", "Invoice saved successfully");
@@ -135,7 +144,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                       IconButton(
                         icon: const Icon(Icons.arrow_back),
                         onPressed: () {
-                          Navigator.pop(context);
+                          Get.back();
                         },
                       ),
                       const SizedBox(width: 5),
@@ -157,6 +166,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   ),
                   const SizedBox(height: 8),
                   AppCustomerSelector(
+                    key: ValueKey(
+                      'invoice_customer_selector_$_customerSelectorVersion',
+                    ),
                     onSelected: (c) {
                       setState(() {
                         selectedCustomer = c;
@@ -174,6 +186,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   const SizedBox(height: 8),
                   if (selectedCustomer != null)
                     AppVehicleSelector(
+                      key: ValueKey(selectedCustomer!.customerId),
                       customerId: selectedCustomer!.customerId,
                       onSelected: (v) {
                         setState(() {
@@ -192,6 +205,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   ),
                   const SizedBox(height: 8),
                   AppItemSelector(
+                    key: ValueKey(
+                      'invoice_item_selector_$_itemSelectorVersion',
+                    ),
                     onSelected: (i) {
                       setState(() {
                         selectedItem = i;

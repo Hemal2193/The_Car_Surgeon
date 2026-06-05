@@ -27,13 +27,11 @@ class _AppVehicleSelectorState extends State<AppVehicleSelector> {
 
   List<Vehicle> filtered = [];
 
-  // ---------------- GET FILTERED VEHICLES ----------------
   List<Vehicle> _vehicles() {
     final all = Get.find<VehicleController>().vehicles;
     return all.where((v) => v.customerId == widget.customerId).toList();
   }
 
-  // ---------------- SHOW OVERLAY ----------------
   void _showOverlay() {
     _removeOverlay();
 
@@ -47,7 +45,7 @@ class _AppVehicleSelectorState extends State<AppVehicleSelector> {
         return ListTile(
           dense: true,
           title: Text(v.registrationNumber),
-          subtitle: Text("${v.make} • ${v.model}"),
+          subtitle: Text("${v.make} - ${v.model}"),
           onTap: () {
             controller.text = v.registrationNumber;
             widget.onSelected(v);
@@ -60,13 +58,11 @@ class _AppVehicleSelectorState extends State<AppVehicleSelector> {
     overlay.insert(_overlayEntry!);
   }
 
-  // ---------------- REMOVE OVERLAY ----------------
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
   }
 
-  // ---------------- FILTER ----------------
   void _filter(String value) {
     final all = _vehicles();
 

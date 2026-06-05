@@ -8,8 +8,22 @@ import '../../widgets/adder_button.dart';
 import '../../widgets/app_popup_menu.dart';
 import 'add_item_dialog.dart';
 
-class ItemsScreen extends StatelessWidget {
+class ItemsScreen extends StatefulWidget {
   const ItemsScreen({super.key});
+
+  @override
+  State<ItemsScreen> createState() => _ItemsScreenState();
+}
+
+class _ItemsScreenState extends State<ItemsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +55,10 @@ class ItemsScreen extends StatelessWidget {
 
           // SEARCH (UI only for now)
           TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() => _searchQuery = value.trim().toLowerCase());
+            },
             decoration: InputDecoration(
               hintText: 'Search item...',
               prefixIcon: const Icon(Icons.search),
@@ -64,7 +82,14 @@ class ItemsScreen extends StatelessWidget {
           Expanded(
             child: GetBuilder<ItemController>(
               builder: (controller) {
-                final List<Item> items = controller.items;
+                final List<Item> items = controller.items.where((item) {
+                  if (_searchQuery.isEmpty) return true;
+
+                  return item.itemId.toLowerCase().contains(_searchQuery) ||
+                      item.name.toLowerCase().contains(_searchQuery) ||
+                      item.type.toLowerCase().contains(_searchQuery) ||
+                      (item.hsnSac ?? '').toLowerCase().contains(_searchQuery);
+                }).toList();
 
                 if (items.isEmpty) {
                   return Container(
@@ -144,14 +169,11 @@ class ItemsScreen extends StatelessWidget {
                 builder: (dialogContext) {
                   return DeleteConfirmationDialog(
                     title: 'Delete Item',
-                    message:
-                        'Are you sure you want to delete ${item.name}?',
+                    message: 'Are you sure you want to delete ${item.name}?',
                     onDelete: () async {
                       final itemController = Get.find<ItemController>();
 
-                      await itemController.deleteItem(
-                        item.itemId,
-                      );
+                      await itemController.deleteItem(item.itemId);
                     },
                   );
                 },

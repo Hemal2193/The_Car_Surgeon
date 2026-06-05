@@ -27,28 +27,18 @@ class AppDropdownField<T> extends StatelessWidget {
           horizontal: 12,
           vertical: 14,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Colors.black26,
-          ),
+          borderSide: const BorderSide(color: Colors.black26),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Colors.black,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Colors.black, width: 1.5),
         ),
       ),
       items: items.map((item) {
-        return DropdownMenuItem<T>(
-          value: item,
-          child: Text(itemLabel(item)),
-        );
+        return DropdownMenuItem<T>(value: item, child: Text(itemLabel(item)));
       }).toList(),
       onChanged: onChanged,
     );
