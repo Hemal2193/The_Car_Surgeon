@@ -1,4 +1,4 @@
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:tcs/database/hive_boxes.dart';
 import 'package:tcs/models/reminder_model.dart';
@@ -66,8 +66,15 @@ class ReminderController extends GetxController {
   }
 
   List<Reminder> getCompletedReminders() {
-  return reminderBox.values.where((r) => r.completed).toList();
-}
+    return reminderBox.values.where((r) => r.completed).toList();
+  }
+
+  Reminder? getReminderByInvoiceId(String invoiceId) {
+    for (final reminder in reminderBox.values) {
+      if (reminder.invoiceId == invoiceId) return reminder;
+    }
+    return null;
+  }
 
   // This controller will handle all the logic related to reminders, such as creating, updating, and deleting reminders.
 }

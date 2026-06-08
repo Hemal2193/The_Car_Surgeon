@@ -13,7 +13,7 @@ import 'package:tcs/widgets/app_fuel_field.dart';
 
 import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/custom_button.dart';
-import 'package:tcs/widgets/app_customer_selector.dart';
+import 'package:tcs/widgets/app_selector.dart';
 
 class AddVehicleDialog extends StatefulWidget {
   final Vehicle? vehicle;
@@ -36,6 +36,8 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   final engineController = TextEditingController();
 
   final chassisController = TextEditingController();
+
+  final odometerController = TextEditingController();
 
   String fuelType = 'Petrol';
 
@@ -82,6 +84,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
       colorController.text = vehicle.vehicleColor ?? '';
       engineController.text = vehicle.engineNumber ?? '';
       chassisController.text = vehicle.chassisNumber ?? '';
+      odometerController.text = vehicle.odoMeter.toString();
       fuelType = vehicle.fuelType;
     }
   }
@@ -95,6 +98,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
     engineController.dispose();
     chassisController.dispose();
     customerSearchController.dispose();
+    odometerController.dispose();
     super.dispose();
   }
 
@@ -130,8 +134,13 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
               const SizedBox(height: 8),
 
-              AppCustomerSelector(
-                initialCustomer: selectedCustomer,
+              AppSelector<Customer>(
+                items: Get.find<CustomerController>().customers,
+                initialItem: selectedCustomer,
+                hintText: 'Select Customer',
+                displayText: (c) => '${c.name} (${c.customerId})',
+                searchText: (c) => '${c.name} ${c.customerId}',
+                itemBuilder: (c) => Text(c.name),
                 onSelected: (customer) {
                   selectedCustomer = customer;
                 },
@@ -207,9 +216,22 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
               const SizedBox(height: 16),
 
-              AppTextField(
-                hintText: 'Chassis Number',
-                controller: chassisController,
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      hintText: 'Chassis Number',
+                      controller: chassisController,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: AppTextField(
+                      hintText: 'Odometer in Km',
+                      controller: odometerController,
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 24),

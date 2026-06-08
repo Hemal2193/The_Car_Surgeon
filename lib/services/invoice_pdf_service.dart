@@ -436,7 +436,7 @@ class InvoicePdfService {
       children: [
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
-          child: pw.Text(label),
+          child: pw.Text(label, style: pw.TextStyle(fontSize: 12)),
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
@@ -444,7 +444,10 @@ class InvoicePdfService {
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
-          child: pw.Text(value?.toString() ?? "N/A"),
+          child: pw.Text(
+            value?.toString() ?? "N/A",
+            style: pw.TextStyle(fontSize: 12),
+          ),
         ),
       ],
     );

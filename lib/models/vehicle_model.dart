@@ -31,6 +31,9 @@ class Vehicle extends HiveObject {
   @HiveField(8)
   String? engineNumber;
 
+  @HiveField(9)
+  String? odoMeter;
+
   Vehicle({
     required this.vehicleId,
     required this.customerId,
@@ -41,5 +44,6 @@ class Vehicle extends HiveObject {
     required this.fuelType,
     this.chassisNumber,
     this.engineNumber,
+    this.odoMeter,
   });
 }

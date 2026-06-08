@@ -1,0 +1,333 @@
+// import 'package:flutter/material.dart';
+// import 'package:tcs/widgets/app_selector_overlay.dart';
+
+// class AppSelector<T> extends StatefulWidget {
+//   final List<T> items;
+//   final Function(T) onSelected;
+//   final T? initialItem;
+//   final String? hintText;
+//   final String Function(T) displayText;
+//   final String Function(T) searchText;
+//   final Widget Function(T) itemBuilder;
+
+//   const AppSelector({
+//     super.key,
+//     required this.items,
+//     required this.onSelected,
+//     this.initialItem,
+//     this.hintText,
+//     required this.displayText,
+//     required this.searchText,
+//     required this.itemBuilder,
+//   });
+
+//   @override
+//   State<AppSelector<T>> createState() => _AppSelectorState<T>();
+// }
+
+// class _AppSelectorState<T> extends State<AppSelector<T>> {
+//   final TextEditingController controller = TextEditingController();
+//   final LayerLink _layerLink = LayerLink();
+//   OverlayEntry? _overlayEntry;
+
+//   List<T> filtered = [];
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     final item = widget.initialItem;
+//     if (item != null) {
+//       controller.text = widget.displayText(item);
+//     }
+//   }
+
+//   void _showOverlay() {
+//     _removeOverlay();
+
+//     final overlay = Overlay.of(context);
+
+//     _overlayEntry = AppSelectorOverlay.create(
+//       context: context,
+//       link: _layerLink,
+//       onClose: _removeOverlay,
+//       children: filtered.take(6).map((item) {
+//         return ListTile(
+//           dense: true,
+//           title: widget.itemBuilder(item),
+//           onTap: () {
+//             controller.text = widget.displayText(item);
+//             widget.onSelected(item);
+//             _removeOverlay();
+//           },
+//         );
+//       }).toList(),
+//     );
+
+//     overlay.insert(_overlayEntry!);
+//   }
+
+//   void _removeOverlay() {
+//     _overlayEntry?.remove();
+//     _overlayEntry = null;
+//   }
+
+//   void _filter(String value) {
+//     setState(() {
+//       filtered = widget.items
+//           .where(
+//             (item) => widget
+//                 .searchText(item)
+//                 .toLowerCase()
+//                 .contains(value.toLowerCase()),
+//           )
+//           .toList();
+//     });
+
+//     _showOverlay();
+//   }
+
+//   @override
+//   void dispose() {
+//     _removeOverlay();
+//     controller.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return CompositedTransformTarget(
+//       link: _layerLink,
+//       child: TextField(
+//         controller: controller,
+//         onChanged: _filter,
+//         onTap: () {
+//           setState(() {
+//             filtered = widget.items;
+//           });
+//           _showOverlay();
+//         },
+//         decoration: InputDecoration(
+//           hintText: widget.hintText ?? 'Select',
+//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+//           enabledBorder: const OutlineInputBorder(
+//             borderSide: BorderSide(color: Colors.black26),
+//           ),
+//           focusedBorder: const OutlineInputBorder(
+//             borderSide: BorderSide(color: Colors.black, width: 1.5),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:tcs/widgets/app_selector_overlay.dart';
+
+class AppSelector<T> extends StatefulWidget {
+  final List<T> items;
+  final Function(T) onSelected;
+  final T? initialItem;
+  final String? hintText;
+  final String Function(T) displayText;
+  final String Function(T) searchText;
+  final Widget Function(T) itemBuilder;
+
+  const AppSelector({
+    super.key,
+    required this.items,
+    required this.onSelected,
+    this.initialItem,
+    this.hintText,
+    required this.displayText,
+    required this.searchText,
+    required this.itemBuilder,
+  });
+
+  @override
+  State<AppSelector<T>> createState() => _AppSelectorState<T>();
+}
+
+class _AppSelectorState<T> extends State<AppSelector<T>> {
+  final TextEditingController controller = TextEditingController();
+  final LayerLink _layerLink = LayerLink();
+  final FocusNode _wrapperFocusNode = FocusNode();
+  final FocusNode _textFieldFocusNode = FocusNode();
+
+  OverlayEntry? _overlayEntry;
+
+  List<T> filtered = [];
+  int highlightedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final item = widget.initialItem;
+    if (item != null) {
+      controller.text = widget.displayText(item);
+    }
+  }
+
+  void _selectItem(T item) {
+    controller.text = widget.displayText(item);
+    widget.onSelected(item);
+    _removeOverlay();
+  }
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    if (_overlayEntry == null || filtered.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    final visibleItems = filtered.take(6).toList();
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        if (highlightedIndex < visibleItems.length - 1) {
+          highlightedIndex++;
+        }
+      });
+
+      _showOverlay();
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        if (highlightedIndex > 0) {
+          highlightedIndex--;
+        }
+      });
+
+      _showOverlay();
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      _selectItem(visibleItems[highlightedIndex]);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _removeOverlay();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+
+    final visibleItems = filtered.take(6).toList();
+
+    if (visibleItems.isEmpty) {
+      return;
+    }
+
+    if (highlightedIndex >= visibleItems.length) {
+      highlightedIndex = visibleItems.length - 1;
+    }
+
+    _overlayEntry = AppSelectorOverlay.create(
+      context: context,
+      link: _layerLink,
+      onClose: _removeOverlay,
+      children: List.generate(visibleItems.length, (index) {
+        final item = visibleItems[index];
+
+        return Container(
+          color: highlightedIndex == index
+              ? Colors.black12
+              : Colors.transparent,
+          child: ListTile(
+            dense: true,
+            title: widget.itemBuilder(item),
+            onTap: () => _selectItem(item),
+          ),
+        );
+      }),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _filter(String value) {
+    setState(() {
+      filtered = widget.items
+          .where(
+            (item) => widget
+                .searchText(item)
+                .toLowerCase()
+                .contains(value.toLowerCase()),
+          )
+          .toList();
+
+      highlightedIndex = 0;
+    });
+
+    if (filtered.isNotEmpty) {
+      _showOverlay();
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    controller.dispose();
+    _wrapperFocusNode.dispose();
+    _textFieldFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _wrapperFocusNode,
+      onKeyEvent: _handleKey,
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TextField(
+          controller: controller,
+          focusNode: _textFieldFocusNode,
+          onChanged: _filter,
+          onTap: () {
+            setState(() {
+              filtered = widget.items;
+              highlightedIndex = 0;
+            });
+
+            if (filtered.isNotEmpty) {
+              _showOverlay();
+            }
+          },
+          decoration: InputDecoration(
+            hintText: widget.hintText ?? 'Select',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black26),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.black, width: 1.5),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

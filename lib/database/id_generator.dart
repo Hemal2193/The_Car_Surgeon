@@ -49,4 +49,16 @@ class IdGenerator {
 
     return 'INV-${currentNumber.toString().padLeft(4, '0')}';
   }
+
+  static String generateReminderId() {
+    final settingsBox = Hive.box(HiveBoxes.settings);
+
+    int currentNumber = settingsBox.get('reminder_counter', defaultValue: 0);
+
+    currentNumber++;
+
+    settingsBox.put('reminder_counter', currentNumber);
+
+    return 'REM-${currentNumber.toString().padLeft(4, '0')}';
+  }
 }
