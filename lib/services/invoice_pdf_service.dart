@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
+import 'package:tcs/controllers/reminder_controller.dart';
 import 'dart:typed_data';
 import 'package:printing/printing.dart';
 import '../models/invoice_model.dart';
@@ -97,8 +98,10 @@ class InvoicePdfService {
   // =====================================================
   static pw.Widget _buildHeader(Invoice invoice) {
     final vehicleController = Get.find<VehicleController>();
+    final reminderCtrl = Get.find<ReminderController>();
 
     final vehicle = vehicleController.getVehicleById(invoice.vehicleId);
+    final reminder = reminderCtrl.getReminderByInvoiceId(invoice.invoiceId);
 
     return pw.Container(
       child: pw.Column(
@@ -303,9 +306,11 @@ class InvoicePdfService {
                               ),
                             ),
                             pw.Text(
-                              "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
-                              "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
-                              "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                              reminder != null
+                                  ? "${reminder.dueDate.day.toString().padLeft(2, '0')}-"
+                                        "${reminder.dueDate.month.toString().padLeft(2, '0')}-"
+                                        "${(reminder.dueDate.year % 100).toString().padLeft(2, '0')}"
+                                  : "-",
                               style: pw.TextStyle(fontSize: 10),
                             ),
                           ],
@@ -352,7 +357,7 @@ class InvoicePdfService {
                               ),
                             ),
                             pw.Text(
-                              "12435 KM",
+                              "${vehicle.odoMeter ?? "-"} Km",
                               style: pw.TextStyle(fontSize: 10),
                             ),
                           ],
@@ -436,7 +441,7 @@ class InvoicePdfService {
       children: [
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
-          child: pw.Text(label, style: pw.TextStyle(fontSize: 12)),
+          child: pw.Text(label, style: pw.TextStyle(fontSize: 11)),
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
@@ -446,7 +451,7 @@ class InvoicePdfService {
           padding: const pw.EdgeInsets.symmetric(vertical: 2),
           child: pw.Text(
             value?.toString() ?? "N/A",
-            style: pw.TextStyle(fontSize: 12),
+            style: pw.TextStyle(fontSize: 11),
           ),
         ),
       ],

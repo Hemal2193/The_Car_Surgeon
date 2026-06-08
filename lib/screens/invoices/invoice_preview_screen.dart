@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:printing/printing.dart';
+import 'package:tcs/controllers/reminder_controller.dart';
+import 'package:tcs/models/reminder_model.dart';
 
 import 'package:tcs/widgets/app_titlebar.dart';
 import '../../controllers/customer_controller.dart';
@@ -45,6 +47,9 @@ class InvoicePreviewScreen extends StatelessWidget {
           (v) => v.vehicleId == invoice.vehicleId,
         );
 
+        final Reminder? reminder = Get.find<ReminderController>()
+            .getReminderByInvoiceId(invoice.invoiceId);
+
         double subtotal = 0;
         double totalTax = 0;
 
@@ -71,7 +76,9 @@ class InvoicePreviewScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border(right: BorderSide(color: Colors.grey.shade300)),
+                        border: Border(
+                          right: BorderSide(color: Colors.grey.shade300),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,14 +92,22 @@ class InvoicePreviewScreen extends StatelessWidget {
                               const SizedBox(width: 5),
                               const Text(
                                 "Invoice Preview",
-                                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 25),
                           Row(
                             children: [
-                              Expanded(child: _infoField("Invoice ID", invoice.invoiceId)),
+                              Expanded(
+                                child: _infoField(
+                                  "Invoice ID",
+                                  invoice.invoiceId,
+                                ),
+                              ),
                               Expanded(
                                 child: _infoField(
                                   "Date",
@@ -103,8 +118,28 @@ class InvoicePreviewScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          _infoField("Customer", customer?.name ?? "Unknown"),
-                          _infoField("Vehicle", vehicle?.registrationNumber ?? "Unknown"),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _infoField(
+                                  "Customer",
+                                  customer?.name ?? "Unknown",
+                                ),
+                              ),
+                              Expanded(
+                                child: _infoField(
+                                  "Due Date",
+                                  "${reminder?.dueDate.day.toString().padLeft(2, '0')}-"
+                                      "${reminder?.dueDate.month.toString().padLeft(2, '0')}-"
+                                      "${(reminder!.dueDate.year % 100).toString().padLeft(2, '0')}",
+                                ),
+                              ),
+                            ],
+                          ),
+                          _infoField(
+                            "Vehicle",
+                            vehicle?.registrationNumber ?? "Unknown",
+                          ),
                           const SizedBox(height: 25),
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -117,7 +152,11 @@ class InvoicePreviewScreen extends StatelessWidget {
                                 _summaryRow("Subtotal", subtotal),
                                 _summaryRow("Tax", totalTax),
                                 const Divider(),
-                                _summaryRow("Grand Total", grandTotal, bold: true),
+                                _summaryRow(
+                                  "Grand Total",
+                                  grandTotal,
+                                  bold: true,
+                                ),
                               ],
                             ),
                           ),
@@ -126,7 +165,9 @@ class InvoicePreviewScreen extends StatelessWidget {
                             width: double.infinity,
                             child: cButton(
                               () {
-                                Get.to(() => CreateInvoiceScreen(invoice: invoice));
+                                Get.to(
+                                  () => CreateInvoiceScreen(invoice: invoice),
+                                );
                               },
                               'Edit Invoice',
                               true,
@@ -137,7 +178,9 @@ class InvoicePreviewScreen extends StatelessWidget {
                             width: double.infinity,
                             child: cButton(
                               () async {
-                                await InvoicePdfService.generateInvoicePdf(invoice);
+                                await InvoicePdfService.generateInvoicePdf(
+                                  invoice,
+                                );
                               },
                               'Download PDF',
                               false,
@@ -148,7 +191,9 @@ class InvoicePreviewScreen extends StatelessWidget {
                             width: double.infinity,
                             child: cButton(
                               () async {
-                                await InvoicePdfService.shareInvoicePdf(invoice);
+                                await InvoicePdfService.shareInvoicePdf(
+                                  invoice,
+                                );
                               },
                               'Share PDF',
                               false,
@@ -174,7 +219,8 @@ class InvoicePreviewScreen extends StatelessWidget {
                             canChangePageFormat: false,
                             allowPrinting: false,
                             allowSharing: false,
-                            build: (format) => InvoicePdfService.generatePdfBytes(invoice),
+                            build: (format) =>
+                                InvoicePdfService.generatePdfBytes(invoice),
                           ),
                         ),
                       ),
@@ -195,9 +241,15 @@ class InvoicePreviewScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -209,8 +261,18 @@ class InvoicePreviewScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text("Rs. ${value.toStringAsFixed(2)}", style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "Rs. ${value.toStringAsFixed(2)}",
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );
