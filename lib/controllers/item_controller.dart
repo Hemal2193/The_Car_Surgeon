@@ -40,18 +40,18 @@ class ItemController extends GetxController {
       for (int i = 0; i < invoice.items.length; i++) {
         final invoiceItem = invoice.items[i];
         if (invoiceItem.itemId == item.itemId) {
+          final newTaxAmount = invoiceItem.qty * invoiceItem.rate * item.gst / 100;
+          final newTotalAmount = (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
           invoice.items[i] = InvoiceItem(
             itemId: invoiceItem.itemId,
             name: item.name,
-            type: item.type,
             hsnSac: item.hsnSac ?? invoiceItem.hsnSac,
             qty: invoiceItem.qty,
             rate: invoiceItem.rate,
             taxPercent: item.gst,
-            taxAmount: invoiceItem.qty * invoiceItem.rate * item.gst / 100,
-            totalAmount:
-                (invoiceItem.qty * invoiceItem.rate) +
-                (invoiceItem.qty * invoiceItem.rate * item.gst / 100),
+            taxAmount: newTaxAmount,
+            totalAmount: newTotalAmount,
+            type: invoiceItem.type,
           );
           invoiceChanged = true;
         }

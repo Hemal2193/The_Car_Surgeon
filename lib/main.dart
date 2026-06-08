@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:tcs/controllers/invoice_controller.dart';
 import 'package:tcs/controllers/item_controller.dart';
+import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
 import 'package:tcs/database/hive_boxes.dart';
 import 'package:tcs/models/customer_model.dart';
 import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/models/item_model.dart';
+import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/models/vehicle_model.dart';
 import 'package:tcs/screens/homepage.dart';
 import 'package:window_manager/window_manager.dart';
@@ -39,11 +41,13 @@ Future<void> main() async {
   Hive.registerAdapter(ItemAdapter());
   Hive.registerAdapter(InvoiceAdapter());
   Hive.registerAdapter(InvoiceItemAdapter());
+  Hive.registerAdapter(ReminderAdapter());
 
   await Hive.openBox<Customer>(HiveBoxes.customers);
   await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
   await Hive.openBox<Item>(HiveBoxes.items);
   await Hive.openBox<Invoice>(HiveBoxes.invoices);
+  await Hive.openBox<Reminder>(HiveBoxes.reminders);
   await Hive.openBox(HiveBoxes.settings);
 
   // CONTROLLERS
@@ -51,6 +55,7 @@ Future<void> main() async {
   Get.put(ItemController(), permanent: true);
   Get.put(VehicleController(), permanent: true);
   Get.put(InvoiceController(), permanent: true);
+  Get.put(ReminderController(), permanent: true);
 
   // IMPORTANT: INIT CACHE AFTER BOX IS READY
   customerController.initCache();
