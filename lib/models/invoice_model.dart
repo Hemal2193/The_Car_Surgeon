@@ -58,6 +58,9 @@ class InvoiceItem {
   @HiveField(7)
   double totalAmount;
 
+  @HiveField(8)
+  String type;
+
   InvoiceItem({
     required this.itemId,
     required this.name,
@@ -67,5 +70,6 @@ class InvoiceItem {
     required this.taxPercent,
     required this.taxAmount,
     required this.totalAmount,
+    required this.type,
   });
 }

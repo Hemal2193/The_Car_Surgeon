@@ -74,13 +74,14 @@ class InvoiceItemAdapter extends TypeAdapter<InvoiceItem> {
       taxPercent: fields[5] as double,
       taxAmount: fields[6] as double,
       totalAmount: fields[7] as double,
+      type: fields[8] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, InvoiceItem obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.itemId)
       ..writeByte(1)
@@ -96,7 +97,9 @@ class InvoiceItemAdapter extends TypeAdapter<InvoiceItem> {
       ..writeByte(6)
       ..write(obj.taxAmount)
       ..writeByte(7)
-      ..write(obj.totalAmount);
+      ..write(obj.totalAmount)
+      ..writeByte(8)
+      ..write(obj.type);
   }
 
   @override

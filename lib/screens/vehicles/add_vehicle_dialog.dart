@@ -16,7 +16,9 @@ import 'package:tcs/widgets/custom_button.dart';
 import 'package:tcs/widgets/app_customer_selector.dart';
 
 class AddVehicleDialog extends StatefulWidget {
-  const AddVehicleDialog({super.key});
+  final Vehicle? vehicle;
+
+  const AddVehicleDialog({super.key, this.vehicle});
 
   @override
   State<AddVehicleDialog> createState() => _AddVehicleDialogState();
@@ -42,6 +44,8 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   final customerSearchController = TextEditingController();
   List<Customer> filteredCustomers = [];
 
+  bool get isEditing => widget.vehicle != null;
+
   void filterCustomers(String query) {
     final customers = CustomerCache.search(
       query,
@@ -66,6 +70,20 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
     final customers = Get.find<CustomerController>().customers;
 
     filteredCustomers = customers;
+
+    final vehicle = widget.vehicle;
+    if (vehicle != null) {
+      selectedCustomer = customers.firstWhereOrNull(
+        (customer) => customer.customerId == vehicle.customerId,
+      );
+      registrationController.text = vehicle.registrationNumber;
+      makeController.text = vehicle.make;
+      modelController.text = vehicle.model;
+      colorController.text = vehicle.vehicleColor ?? '';
+      engineController.text = vehicle.engineNumber ?? '';
+      chassisController.text = vehicle.chassisNumber ?? '';
+      fuelType = vehicle.fuelType;
+    }
   }
 
   @override
@@ -95,9 +113,12 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Add Vehicle',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Text(
+                isEditing ? 'Edit Vehicle' : 'Add Vehicle',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
               const SizedBox(height: 25),
@@ -110,6 +131,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
               const SizedBox(height: 8),
 
               AppCustomerSelector(
+                initialCustomer: selectedCustomer,
                 onSelected: (customer) {
                   selectedCustomer = customer;
                 },
@@ -130,6 +152,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
                   Expanded(
                     child: AppFuelField(
+                      initialValue: fuelType,
                       onSelected: (value) {
                         fuelType = value;
                       },
@@ -204,7 +227,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
                   const SizedBox(width: 10),
 
-                  cButton(saveVehicle, 'Save', true),
+                  cButton(saveVehicle, isEditing ? 'Update' : 'Save', true),
                 ],
               ),
             ],
@@ -228,7 +251,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
     final vehicleController = Get.find<VehicleController>();
 
     final vehicle = Vehicle(
-      vehicleId: IdGenerator.generateVehicleId(),
+      vehicleId: widget.vehicle?.vehicleId ?? IdGenerator.generateVehicleId(),
 
       customerId: selectedCustomer!.customerId,
 
@@ -247,7 +270,11 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
       chassisNumber: chassisController.text.trim(),
     );
 
-    await vehicleController.addVehicle(vehicle);
+    if (isEditing) {
+      await vehicleController.updateVehicle(vehicle);
+    } else {
+      await vehicleController.addVehicle(vehicle);
+    }
 
     if (mounted) {
       Navigator.pop(context);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
+import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 
 import '../../controllers/invoice_controller.dart';
 import '../../controllers/customer_controller.dart';
@@ -119,6 +120,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: DataTable(
+                      showCheckboxColumn: false,
                       columns: const [
                         DataColumn(label: Text("Invoice ID")),
                         DataColumn(label: Text("Date")),
@@ -150,6 +152,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         );
 
                         return DataRow(
+                          onSelectChanged: (selected) {
+                            if (selected == true) {
+                              Get.to(
+                                () => InvoicePreviewScreen(
+                                  invoiceId: inv.invoiceId,
+                                ),
+                              );
+                            }
+                          },
                           cells: [
                             DataCell(
                               Text(
@@ -175,7 +186,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             DataCell(
                               AppPopupMenu(
                                 onEdit: () {
-                                  // later edit screen
+                                  Get.to(
+                                    () => CreateInvoiceScreen(invoice: inv),
+                                  );
                                 },
                                 onDelete: () {
                                   showDialog(

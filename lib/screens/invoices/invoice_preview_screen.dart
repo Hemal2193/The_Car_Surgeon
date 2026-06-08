@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:tcs/controllers/invoice_controller.dart';
-import 'package:tcs/screens/invoices/create_invoice_screen.dart';
-import 'package:tcs/widgets/custom_button.dart';
-import '../../services/invoice_pdf_service.dart';
+import 'package:printing/printing.dart';
+
 import '../../controllers/customer_controller.dart';
+import '../../controllers/invoice_controller.dart';
 import '../../controllers/vehicle_controller.dart';
-import '../../models/invoice_model.dart';
+
 import '../../models/customer_model.dart';
+import '../../models/invoice_model.dart';
 import '../../models/vehicle_model.dart';
 
-class InvoiceDetailScreen extends StatelessWidget {
+import '../../services/invoice_pdf_service.dart';
+
+import '../../widgets/custom_button.dart';
+
+import 'create_invoice_screen.dart';
+
+class InvoicePreviewScreen extends StatelessWidget {
   final String invoiceId;
 
-  const InvoiceDetailScreen({super.key, required this.invoiceId});
+  const InvoicePreviewScreen({super.key, required this.invoiceId});
 
   @override
   Widget build(BuildContext context) {
@@ -23,35 +29,34 @@ class InvoiceDetailScreen extends StatelessWidget {
     final Invoice? invoice = Get.find<InvoiceController>().invoices
         .firstWhereOrNull((i) => i.invoiceId == invoiceId);
 
+    if (invoice == null) {
+      return const Scaffold(body: Center(child: Text("Invoice not found")));
+    }
+
     final Customer? customer = customerCtrl.customers.firstWhereOrNull(
-      (c) => c.customerId == invoice?.customerId,
+      (c) => c.customerId == invoice.customerId,
     );
 
     final Vehicle? vehicle = vehicleCtrl.vehicles.firstWhereOrNull(
-      (v) => v.vehicleId == invoice?.vehicleId,
+      (v) => v.vehicleId == invoice.vehicleId,
     );
 
     double subtotal = 0;
     double totalTax = 0;
 
-    for (var item in invoice?.items ?? []) {
+    for (var item in invoice.items) {
       subtotal += item.qty * item.rate;
       totalTax += item.taxAmount;
     }
 
     final grandTotal = subtotal + totalTax;
 
-    if (invoice == null) {
-      return const Scaffold(body: Center(child: Text("Invoice not found")));
-    }
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // =====================================================
-          // LEFT PANEL (MATCH CREATE INVOICE STYLE)
+          // LEFT PANEL
           // =====================================================
           Container(
             width: 320,
@@ -71,7 +76,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     const Text(
-                      "Invoice Details",
+                      "Invoice Preview",
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -84,19 +89,22 @@ class InvoiceDetailScreen extends StatelessWidget {
 
                 Row(
                   children: [
-                    _infoField("Invoice ID", invoice.invoiceId),
-                    const SizedBox(width: 20),
-                    _infoField(
-                      "Date",
-                      "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
-                          "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
-                          "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                    Expanded(
+                      child: _infoField("Invoice ID", invoice.invoiceId),
+                    ),
+                    Expanded(
+                      child: _infoField(
+                        "Date",
+                        "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
+                            "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
+                            "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                      ),
                     ),
                   ],
                 ),
 
-                // const SizedBox(height: 15),
                 _infoField("Customer", customer?.name ?? "Unknown"),
+
                 _infoField("Vehicle", vehicle?.registrationNumber ?? "Unknown"),
 
                 const SizedBox(height: 25),
@@ -108,13 +116,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Summary",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
                       _summaryRow("Subtotal", subtotal),
                       _summaryRow("Tax", totalTax),
                       const Divider(),
@@ -140,85 +142,51 @@ class InvoiceDetailScreen extends StatelessWidget {
 
                 SizedBox(
                   width: double.infinity,
-                  child: cButton(() => Get.back(), 'Back', false),
+                  child: cButton(
+                    () async {
+                      await InvoicePdfService.generateInvoicePdf(invoice);
+                    },
+                    'Download PDF',
+                    false,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: cButton(
+                    () async {
+                      await InvoicePdfService.shareInvoicePdf(invoice);
+                    },
+                    'Share PDF',
+                    false,
+                  ),
                 ),
               ],
             ),
           ),
 
           // =====================================================
-          // RIGHT PANEL (TABLE SAME STYLE AS CREATE SCREEN)
+          // RIGHT PANEL
           // =====================================================
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Invoice Items",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      cButton(
-                        () => InvoicePdfService.generateInvoicePdf(invoice),
-                        'Download PDF',
-                        true,
-                      ),
-                    ],
+            child: Container(
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: PdfPreview(
+                  pdfPreviewPageDecoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SingleChildScrollView(
-                        child: DataTable(
-                          columns: const [
-                            DataColumn(label: Text("Sr No")),
-                            DataColumn(label: Text("Item")),
-                            DataColumn(label: Text("HSN/SAC")),
-                            DataColumn(label: Text("Qty")),
-                            DataColumn(label: Text("Rate")),
-                            DataColumn(label: Text("Tax")),
-                            DataColumn(label: Text("Total")),
-                          ],
-                          rows: List.generate(invoice.items.length, (i) {
-                            final item = invoice.items[i];
-
-                            return DataRow(
-                              cells: [
-                                DataCell(Text("${i + 1}")),
-                                DataCell(Text(item.name)),
-                                DataCell(Text(item.hsnSac ?? "-")),
-                                DataCell(Text("${item.qty}")),
-                                DataCell(Text(item.rate.toString())),
-                                DataCell(
-                                  Text(
-                                    "${item.taxAmount.toStringAsFixed(2)} (${item.taxPercent}%)",
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(item.totalAmount.toStringAsFixed(2)),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  allowPrinting: false,
+                  allowSharing: false,
+                  build: (format) =>
+                      InvoicePdfService.generatePdfBytes(invoice),
+                ),
               ),
             ),
           ),
@@ -227,7 +195,7 @@ class InvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoField(String label, String value) {
+  static Widget _infoField(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -247,7 +215,7 @@ class InvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(String label, double value, {bool bold = false}) {
+  static Widget _summaryRow(String label, double value, {bool bold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

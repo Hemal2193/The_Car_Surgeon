@@ -8,7 +8,9 @@ import '../../widgets/app_text_field.dart';
 import '../../widgets/custom_button.dart';
 
 class AddItemDialog extends StatefulWidget {
-  const AddItemDialog({super.key});
+  final Item? item;
+
+  const AddItemDialog({super.key, this.item});
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -33,6 +35,23 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   final LayerLink _gstLink = LayerLink();
   OverlayEntry? _gstOverlay;
+
+  bool get isEditing => widget.item != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final item = widget.item;
+    if (item != null) {
+      nameController.text = item.name;
+      hsnController.text = item.hsnSac ?? '';
+      priceController.text = item.price?.toString() ?? '';
+      selectedType = item.type;
+      selectedGst =
+          '${item.gst.toStringAsFixed(item.gst.truncateToDouble() == item.gst ? 0 : 2)}%';
+    }
+  }
 
   @override
   void dispose() {
@@ -180,9 +199,9 @@ class _AddItemDialogState extends State<AddItemDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Add Item',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              isEditing ? 'Edit Item' : 'Add Item',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 20),
@@ -366,7 +385,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
               children: [
                 cButton(() => Navigator.pop(context), 'Cancel', false),
                 const SizedBox(width: 10),
-                cButton(() => _saveItem(), 'Save', true),
+                cButton(() => _saveItem(), isEditing ? 'Update' : 'Save', true),
               ],
             ),
           ],
@@ -389,7 +408,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
     if (name.isEmpty) return;
 
     final item = Item(
-      itemId: IdGenerator.generateItemId(),
+      itemId: widget.item?.itemId ?? IdGenerator.generateItemId(),
       name: name,
       type: selectedType,
       hsnSac: hsnController.text.trim().isEmpty
@@ -402,7 +421,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
       // qtyType: selectedQtyType,
     );
 
-    Get.find<ItemController>().addItem(item);
+    if (isEditing) {
+      Get.find<ItemController>().updateItem(item);
+    } else {
+      Get.find<ItemController>().addItem(item);
+    }
 
     Navigator.pop(context);
   }

@@ -3,7 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  file_selector_windows
   flutter_acrylic
+  printing
   screen_retriever_windows
   window_manager
 )

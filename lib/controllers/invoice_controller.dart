@@ -14,6 +14,11 @@ class InvoiceController extends GetxController {
     update();
   }
 
+  Future<void> updateInvoice(Invoice invoice) async {
+    await invoiceBox.put(invoice.invoiceId, invoice);
+    update();
+  }
+
   Future<void> deleteInvoice(String id) async {
     if (invoiceBox.containsKey(id)) {
       await invoiceBox.delete(id);

@@ -19,6 +19,12 @@ class VehicleController extends GetxController {
     update();
   }
 
+  Future<void> updateVehicle(Vehicle vehicle) async {
+    await vehicleBox.put(vehicle.vehicleId, vehicle);
+
+    update();
+  }
+
   Future<void> deleteVehicle(String vehicleId) async {
     await vehicleBox.delete(vehicleId);
 

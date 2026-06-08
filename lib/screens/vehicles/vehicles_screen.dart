@@ -7,6 +7,7 @@ import 'package:tcs/models/customer_model.dart';
 import 'package:tcs/models/vehicle_model.dart';
 
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
+import 'package:tcs/screens/vehicles/vehicle_detail_screen.dart';
 import 'package:tcs/services/customer_cache.dart';
 
 import 'package:tcs/widgets/adder_button.dart';
@@ -117,6 +118,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: DataTable(
+                      showCheckboxColumn: false,
                       columns: const [
                         DataColumn(label: Text('Vehicle ID')),
                         DataColumn(label: Text('Registration No')),
@@ -151,6 +153,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     }
 
     return DataRow(
+      onSelectChanged: (selected) {
+        if (selected == true) {
+          Get.to(() => VehicleDetailScreen(vehicleId: vehicle.vehicleId));
+        }
+      },
       cells: [
         DataCell(
           Text(
@@ -170,7 +177,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         DataCell(
           AppPopupMenu(
             onEdit: () {
-              print('Edit ${vehicle.vehicleId}');
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AddVehicleDialog(vehicle: vehicle);
+                },
+              );
             },
 
             onDelete: () {

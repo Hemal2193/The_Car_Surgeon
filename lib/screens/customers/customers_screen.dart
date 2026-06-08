@@ -7,6 +7,7 @@ import 'package:tcs/screens/customers/add_customer_dialog.dart';
 import 'package:tcs/widgets/adder_button.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
+import 'package:tcs/screens/customers/customer_detail_screen.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -107,6 +108,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: DataTable(
+                      showCheckboxColumn: false,
                       columns: const [
                         DataColumn(label: Text('Customer ID')),
                         DataColumn(label: Text('Name')),
@@ -131,8 +133,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   DataRow buildCustomerRow(BuildContext context, Customer customer) {
     return DataRow(
+      
+      onSelectChanged: (selected) {
+        if (selected == true) {
+          Get.to(
+            () => CustomerDetailScreen(customerId: customer.customerId),
+          );
+        }
+      },
       cells: [
         DataCell(
+          
           Text(
             customer.customerId,
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -160,7 +171,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
         DataCell(
           AppPopupMenu(
             onEdit: () {
-              print('Edit ${customer.customerId}');
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AddCustomerDialog(customer: customer);
+                },
+              );
             },
 
             onDelete: () {

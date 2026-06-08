@@ -160,7 +160,12 @@ class _ItemsScreenState extends State<ItemsScreen> {
         DataCell(
           AppPopupMenu(
             onEdit: () {
-              print('Edit ${item.itemId}');
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AddItemDialog(item: item);
+                },
+              );
             },
 
             onDelete: () {

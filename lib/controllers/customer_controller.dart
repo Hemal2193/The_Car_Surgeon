@@ -26,6 +26,12 @@ class CustomerController extends GetxController {
     _refreshCacheAndUI();
   }
 
+  Future<void> updateCustomer(Customer customer) async {
+    await customerBox.put(customer.customerId, customer);
+
+    _refreshCacheAndUI();
+  }
+
   Future<void> deleteCustomer(String id) async {
     await customerBox.delete(id);
 

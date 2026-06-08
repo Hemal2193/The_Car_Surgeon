@@ -7,8 +7,13 @@ import '../models/customer_model.dart';
 
 class AppCustomerSelector extends StatefulWidget {
   final Function(Customer) onSelected;
+  final Customer? initialCustomer;
 
-  const AppCustomerSelector({super.key, required this.onSelected});
+  const AppCustomerSelector({
+    super.key,
+    required this.onSelected,
+    this.initialCustomer,
+  });
 
   @override
   State<AppCustomerSelector> createState() => _AppCustomerSelectorState();
@@ -27,6 +32,11 @@ class _AppCustomerSelectorState extends State<AppCustomerSelector> {
   void initState() {
     super.initState();
     filtered = Get.find<CustomerController>().customers;
+
+    final customer = widget.initialCustomer;
+    if (customer != null) {
+      controller.text = '${customer.name} (${customer.customerId})';
+    }
   }
 
   void _showOverlay() {

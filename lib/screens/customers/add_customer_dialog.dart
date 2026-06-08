@@ -7,7 +7,9 @@ import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/custom_button.dart';
 
 class AddCustomerDialog extends StatefulWidget {
-  const AddCustomerDialog({super.key});
+  final Customer? customer;
+
+  const AddCustomerDialog({super.key, this.customer});
 
   @override
   State<AddCustomerDialog> createState() => _AddCustomerDialogState();
@@ -27,6 +29,24 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   final gstController = TextEditingController();
 
   final panController = TextEditingController();
+
+  bool get isEditing => widget.customer != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final customer = widget.customer;
+    if (customer != null) {
+      nameController.text = customer.name;
+      contact1Controller.text = customer.contact1;
+      contact2Controller.text = customer.contact2 ?? '';
+      addressController.text = customer.address ?? '';
+      emailController.text = customer.email ?? '';
+      gstController.text = customer.gstNumber ?? '';
+      panController.text = customer.panNumber ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -49,7 +69,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     final customerController = Get.find<CustomerController>();
 
     final customer = Customer(
-      customerId: IdGenerator.generateCustomerId(),
+      customerId:
+          widget.customer?.customerId ?? IdGenerator.generateCustomerId(),
 
       name: nameController.text.trim(),
 
@@ -66,7 +87,11 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       panNumber: panController.text.trim(),
     );
 
-    await customerController.addCustomer(customer);
+    if (isEditing) {
+      await customerController.updateCustomer(customer);
+    } else {
+      await customerController.addCustomer(customer);
+    }
 
     if (mounted) {
       Navigator.pop(context);
@@ -86,9 +111,12 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Add Customer',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Text(
+                isEditing ? 'Edit Customer' : 'Add Customer',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
               const SizedBox(height: 25),
@@ -244,7 +272,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
                   const SizedBox(width: 10),
 
-                  cButton(saveCustomer, 'Save', true),
+                  cButton(saveCustomer, isEditing ? 'Update' : 'Save', true),
                 ],
               ),
             ],

@@ -8,11 +8,13 @@ import '../models/vehicle_model.dart';
 class AppVehicleSelector extends StatefulWidget {
   final String customerId;
   final Function(Vehicle) onSelected;
+  final Vehicle? initialVehicle;
 
   const AppVehicleSelector({
     super.key,
     required this.customerId,
     required this.onSelected,
+    this.initialVehicle,
   });
 
   @override
@@ -26,6 +28,16 @@ class _AppVehicleSelectorState extends State<AppVehicleSelector> {
   OverlayEntry? _overlayEntry;
 
   List<Vehicle> filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final vehicle = widget.initialVehicle;
+    if (vehicle != null) {
+      controller.text = vehicle.registrationNumber;
+    }
+  }
 
   List<Vehicle> _vehicles() {
     final all = Get.find<VehicleController>().vehicles;

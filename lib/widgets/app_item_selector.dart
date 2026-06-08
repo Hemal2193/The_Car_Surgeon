@@ -7,8 +7,13 @@ import '../models/item_model.dart';
 
 class AppItemSelector extends StatefulWidget {
   final Function(Item) onSelected;
+  final Item? initialItem;
 
-  const AppItemSelector({super.key, required this.onSelected});
+  const AppItemSelector({
+    super.key,
+    required this.onSelected,
+    this.initialItem,
+  });
 
   @override
   State<AppItemSelector> createState() => _AppItemSelectorState();
@@ -20,6 +25,16 @@ class _AppItemSelectorState extends State<AppItemSelector> {
   OverlayEntry? _overlayEntry;
 
   List<Item> filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final item = widget.initialItem;
+    if (item != null) {
+      controller.text = item.name;
+    }
+  }
 
   void _showOverlay() {
     _removeOverlay();
