@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
-import 'package:printing/printing.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/services/invoice_pdf_preview.dart';
@@ -22,18 +21,28 @@ import '../../widgets/custom_button.dart';
 
 import 'create_invoice_screen.dart';
 
-class InvoicePreviewScreen extends StatelessWidget {
+class InvoicePreviewScreen extends StatefulWidget {
   final String invoiceId;
 
   const InvoicePreviewScreen({super.key, required this.invoiceId});
 
   @override
+  State<InvoicePreviewScreen> createState() => _InvoicePreviewScreenState();
+}
+
+class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
+  final RxBool isInteractingWithPdf = false.obs;
+  @override
   Widget build(BuildContext context) {
     if (Responsive.isDesktop(context)) {
-      return _buildDesktopInvoicePreview(context, invoiceId);
+      return _buildDesktopInvoicePreview(context, widget.invoiceId);
     }
 
-    return _buildMobileInvoicePreview(context, invoiceId);
+    return _buildMobileInvoicePreview(
+      context,
+      widget.invoiceId,
+      isInteractingWithPdf,
+    );
   }
 }
 
@@ -221,18 +230,6 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                       child: Padding(
                         padding: const EdgeInsets.all(10),
                         child: InvoicePdfPreview(invoice: invoice),
-                        // child: PdfPreview(
-                        //   pdfPreviewPageDecoration: BoxDecoration(
-                        //     color: Colors.white,
-                        //     border: Border.all(color: Colors.grey.shade300),
-                        //   ),
-                        //   canChangeOrientation: false,
-                        //   canChangePageFormat: false,
-                        //   allowPrinting: false,
-                        //   allowSharing: false,
-                        //   build: (format) =>
-                        //       InvoicePdfService.generatePdfBytes(invoice),
-                        // ),
                       ),
                     ),
                   ),
@@ -246,7 +243,11 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
   );
 }
 
-Widget _buildMobileInvoicePreview(BuildContext context, String invoiceId) {
+Widget _buildMobileInvoicePreview(
+  BuildContext context,
+  String invoiceId,
+  RxBool isInteractingWithPdf,
+) {
   return GetBuilder<InvoiceController>(
     builder: (invoiceController) {
       final customerCtrl = Get.find<CustomerController>();
@@ -297,29 +298,39 @@ Widget _buildMobileInvoicePreview(BuildContext context, String invoiceId) {
           ),
         ),
 
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _invoiceHeaderCard(invoice),
+        body: Obx(
+          () => SingleChildScrollView(
+            physics: isInteractingWithPdf.value
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _invoiceHeaderCard(invoice),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 15),
 
-              _quickInfoCard(customer, vehicle, reminder, invoice),
+                _quickInfoCard(customer, vehicle, reminder, invoice),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 15),
 
-              _financialSummaryCard(subtotal, totalTax, grandTotal),
+                Listener(
+                  onPointerDown: (_) => isInteractingWithPdf.value = true,
+                  onPointerUp: (_) => isInteractingWithPdf.value = false,
+                  onPointerCancel: (_) => isInteractingWithPdf.value = false,
+                  child: _pdfContainer(invoice),
+                ),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 20),
 
-              _actionButtons(invoice),
+                _financialSummaryCard(subtotal, totalTax, grandTotal),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: 15),
 
-              _pdfContainer(invoice),
-            ],
+                _actionButtons(invoice),
+              ],
+            ),
           ),
         ),
       );
@@ -462,21 +473,22 @@ Widget _pdfContainer(Invoice invoice) {
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: PdfPreview(
-        previewPageMargin: EdgeInsets.zero,
-        build: (format) => InvoicePdfService.generatePdfBytes(invoice),
+      child: InvoicePdfPreview(invoice: invoice),
+      // child: PdfPreview(
+      //   previewPageMargin: EdgeInsets.zero,
+      //   build: (format) => InvoicePdfService.generatePdfBytes(invoice),
 
-        maxPageWidth: double.infinity,
+      //   maxPageWidth: double.infinity,
 
-        canChangeOrientation: false,
-        canChangePageFormat: false,
-        allowPrinting: false,
-        allowSharing: false,
+      //   canChangeOrientation: false,
+      //   canChangePageFormat: false,
+      //   allowPrinting: false,
+      //   allowSharing: false,
 
-        pdfPreviewPageDecoration: const BoxDecoration(color: Colors.white),
+      //   pdfPreviewPageDecoration: const BoxDecoration(color: Colors.white),
 
-        initialPageFormat: PdfPageFormat.a4,
-      ),
+      //   initialPageFormat: PdfPageFormat.a4,
+      // ),
     ),
   );
 }

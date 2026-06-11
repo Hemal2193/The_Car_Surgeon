@@ -36,39 +36,33 @@ class InvoicePdfService {
     final pdf = pw.Document();
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4.copyWith(
           marginBottom: 0,
           marginTop: 0,
           marginLeft: 0,
           marginRight: 0,
         ),
+
         margin: const pw.EdgeInsets.all(24),
 
-        build: (context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _buildHeader(invoice, logoBytes),
+        build: (context) => [
+          _buildHeader(invoice, logoBytes),
 
-              pw.SizedBox(height: 20),
+          pw.SizedBox(height: 20),
 
-              _buildCustomerBlock(invoice),
+          _buildCustomerBlock(invoice),
 
-              pw.SizedBox(height: 20),
+          pw.SizedBox(height: 20),
 
-              _buildItemsTable(invoice),
+          _buildItemsTable(invoice),
 
-              pw.SizedBox(height: 20),
+          pw.SizedBox(height: 20),
 
-              _buildTaxSummaryTable(invoice),
+          _buildTaxSummaryTable(invoice),
+        ],
 
-              pw.Spacer(),
-
-              _buildFooter(),
-            ],
-          );
-        },
+        footer: (context) => _buildFooter(),
       ),
     );
 

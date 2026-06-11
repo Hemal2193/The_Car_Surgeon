@@ -6,51 +6,64 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../models/invoice_model.dart';
 import '../services/invoice_pdf_service.dart';
 
-class InvoicePdfPreview extends StatelessWidget {
+/// Global cache: invoiceId → PDF bytes
+final Map<String, Uint8List> _pdfCache = {};
+
+/// Invalidates the cached PDF for a specific invoice so it regenerates on next view.
+void invalidatePdfCache(String invoiceId) {
+  _pdfCache.remove(invoiceId);
+}
+
+class InvoicePdfPreview extends StatefulWidget {
   final Invoice invoice;
 
-  const InvoicePdfPreview({
-    super.key,
-    required this.invoice,
-  });
+  const InvoicePdfPreview({super.key, required this.invoice});
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Uint8List>(
-      future: InvoicePdfService.generatePdfBytes(invoice),
+  State<InvoicePdfPreview> createState() => _InvoicePdfPreviewState();
+}
 
+class _InvoicePdfPreviewState extends State<InvoicePdfPreview> {
+  @override
+  Widget build(BuildContext context) {
+    final invoiceId = widget.invoice.invoiceId;
+
+    // Check cache first
+    if (_pdfCache.containsKey(invoiceId)) {
+      return SfPdfViewer.memory(
+        _pdfCache[invoiceId]!,
+        pageLayoutMode: PdfPageLayoutMode.continuous,
+        scrollDirection: PdfScrollDirection.vertical,
+        canShowPaginationDialog: false,
+        canShowScrollHead: false,
+        enableDoubleTapZooming: true,
+      );
+    }
+
+    return FutureBuilder<Uint8List>(
+      future: InvoicePdfService.generatePdfBytes(widget.invoice),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Failed to load PDF\n${snapshot.error}',
-            ),
-          );
+          return Center(child: Text('Failed to load PDF\n${snapshot.error}'));
         }
 
         if (!snapshot.hasData) {
-          return const Center(
-            child: Text('No PDF found'),
-          );
+          return const Center(child: Text('No PDF found'));
         }
+
+        // Cache the bytes before displaying
+        _pdfCache[invoiceId] = snapshot.data!;
 
         return SfPdfViewer.memory(
           snapshot.data!,
-
           pageLayoutMode: PdfPageLayoutMode.single,
-
-          scrollDirection: PdfScrollDirection.horizontal,
-
+          scrollDirection: PdfScrollDirection.vertical,
           canShowPaginationDialog: false,
-
           canShowScrollHead: false,
-
           enableDoubleTapZooming: true,
         );
       },

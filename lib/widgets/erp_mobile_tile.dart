@@ -55,14 +55,11 @@ class ErpMobileTile extends StatelessWidget {
                       ),
 
                       for (final subtitle in subtitles)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade900,
-                            ),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade900,
                           ),
                         ),
                     ],

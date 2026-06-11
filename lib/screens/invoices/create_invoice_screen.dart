@@ -9,6 +9,7 @@ import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_selector.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/custom_button.dart';
+import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 
 import '../../models/customer_model.dart';
 import '../../models/vehicle_model.dart';
@@ -319,36 +320,37 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _buildMobileCreateInvoice(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _mobileTopBar(),
-
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _mobileCustomerSelector(),
-                  const SizedBox(height: 12),
-
-                  _mobileVehicleSelector(),
-                  const SizedBox(height: 20),
-
-                  _mobileAddItemButton(),
-                  const SizedBox(height: 12),
-
-                  _mobileItemsList(),
-
-                  const SizedBox(height: 20),
-                  _mobileReminderSection(),
-                ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _mobileTopBar(),
+              Container(
+                color: Colors.white,
+                child: const TabBar(
+                  labelColor: Colors.black,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: Colors.black,
+                  tabs: [
+                    Tab(text: 'Invoice'),
+                    Tab(text: 'Reminder'),
+                  ],
+                ),
               ),
-            ),
-
-            _mobileBottomBar(),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildMobileInvoiceTab(),
+                    _buildMobileReminderTab(),
+                  ],
+                ),
+              ),
+              _mobileBottomBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -427,13 +429,17 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _mobileAddItemButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.add),
-        label: const Text("Add Item"),
-        onPressed: _openAddItemSheet,
-      ),
+    return cButton(
+      () {
+        setState(() {
+          qty = int.tryParse(qtyController.text) ?? 1;
+          rate = double.tryParse(rateController.text) ?? 0;
+        });
+
+        addToInvoice();
+      },
+      "Add Item",
+      true,
     );
   }
 
@@ -448,6 +454,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(rows.length, (i) {
         final r = rows[i];
         return _itemCard(r, i);
@@ -456,41 +463,49 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _itemCard(_InvoiceRow r, int index) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Stack(
           children: [
-            Text(
-              r.item.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-
-            Text("Qty: ${r.qty} | Rate: ${r.rate}"),
-            Text("Tax: ${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)"),
-            Text("Total: ${r.totalAmount.toStringAsFixed(2)}"),
-
-            const SizedBox(height: 10),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () {
-                    _editRow(index);
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () {
-                    setState(() => rows.removeAt(index));
-                  },
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${r.item.name} (${r.item.type})",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          _deleteRow(index);
+                        },
+                        child: Icon(Icons.delete_outline, color: Colors.black),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "Qty: ${r.qty} | Rate: ${r.rate}",
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade900),
+                  ),
+                  Text(
+                    "Tax: ${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
+                  ),
+                  Text("Total: ${r.totalAmount.toStringAsFixed(2)}"),
+                ],
+              ),
             ),
           ],
         ),
@@ -498,19 +513,19 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
-  void _editRow(int index) {
-    final r = rows[index];
-
-    setState(() {
-      selectedItem = r.item;
-      qty = r.qty;
-      rate = r.rate;
-
-      qtyController.text = r.qty.toString();
-      rateController.text = r.rate.toString();
-
-      rows.removeAt(index);
-    });
+  void _deleteRow(int index) {
+    showDialog(
+      context: context,
+      builder: (_) => DeleteConfirmationDialog(
+        title: 'Delete Item',
+        message: 'Are you sure you want to remove this item?',
+        onDelete: () {
+          setState(() {
+            rows.removeAt(index);
+          });
+        },
+      ),
+    );
   }
 
   Widget _mobileBottomBar() {
@@ -534,67 +549,109 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
-  void _openAddItemSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  Widget _buildMobileInvoiceTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _mobileCustomerSelector(),
+          const SizedBox(height: 12),
+          _mobileVehicleSelector(),
+          const SizedBox(height: 12),
+          _addItem(),
+          _mobileAddItemButton(),
+          const SizedBox(height: 12),
+          _mobileItemsList(),
+          // const SizedBox(height: 80),
+        ],
       ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppSelector<Item>(
-                items: Get.find<ItemController>().items,
-                initialItem: selectedItem,
-                hintText: "Select Item",
-                displayText: (i) => i.name,
-                searchText: (i) => i.name,
-                itemBuilder: (i) => Text(i.name),
-                onSelected: (i) => selectedItem = i,
-              ),
+    );
+  }
 
-              TextField(
+  Widget _buildMobileReminderTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: _mobileReminderSection(),
+    );
+  }
+
+  Widget _addItem() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text("Items", style: TextStyle(fontWeight: FontWeight.w600)),
+        AppSelector<Item>(
+          key: ValueKey('mobile_item_$_itemSelectorVersion'),
+          items: Get.find<ItemController>().items,
+          initialItem: selectedItem,
+          hintText: "Select Item",
+          displayText: (i) => i.name,
+          searchText: (i) => i.name,
+          itemBuilder: (i) => Text(i.name),
+          onSelected: (i) {
+            setState(() {
+              selectedItem = i;
+              rate = i.price ?? 0;
+              rateController.text = rate.toString();
+            });
+          },
+        ),
+        SizedBox(height: 15),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
                 controller: qtyController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Qty"),
-              ),
+                onChanged: (v) {
+                  qty = int.tryParse(v) ?? 1;
+                },
 
-              TextField(
+                decoration: const InputDecoration(
+                  labelText: "Qty",
+                  labelStyle: TextStyle(color: Colors.black),
+                  focusColor: Colors.black,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black26),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 10),
+
+            Expanded(
+              child: TextField(
                 controller: rateController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Rate"),
-              ),
-
-              const SizedBox(height: 12),
-
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    qty = int.tryParse(qtyController.text) ?? 1;
-                    rate = double.tryParse(rateController.text) ?? 0;
-                  });
-
-                  addToInvoice();
-                  Navigator.pop(context);
+                onChanged: (v) {
+                  rate = double.tryParse(v) ?? 0;
                 },
-                child: const Text("Add"),
+                decoration: const InputDecoration(
+                  labelText: "Rate",
+                  labelStyle: TextStyle(color: Colors.black),
+                  border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black26),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black, width: 1.5),
+                  ),
+                ),
               ),
+            ),
+          ],
+        ),
 
-              const SizedBox(height: 10),
-            ],
-          ),
-        );
-      },
+        const SizedBox(height: 15),
+      ],
     );
   }
 

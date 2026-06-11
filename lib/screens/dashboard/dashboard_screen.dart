@@ -565,7 +565,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (customer != null) customer.name,
 
         if (vehicle != null)
-          '${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber})',
+          '${vehicle.make} ${vehicle.model} \n${vehicle.registrationNumber}',
 
         // 'Due: '
         //     '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
@@ -595,7 +595,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
             ),
