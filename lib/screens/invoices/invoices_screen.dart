@@ -1,7 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
+import 'package:tcs/utils/responsive.dart';
+import 'package:tcs/widgets/erp_mobile_tile.dart';
 
 import '../../controllers/invoice_controller.dart';
 import '../../controllers/customer_controller.dart';
@@ -50,6 +56,23 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (Platform.isAndroid || Platform.isIOS) {
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.white, // background
+          statusBarIconBrightness: Brightness.dark, // Android icons
+          statusBarBrightness: Brightness.light, // iOS icons
+        ),
+      );
+    }
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopInvoices();
+    }
+
+    return _buildMobileInvoices();
+  }
+
+  Widget _buildDesktopInvoices() {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -147,7 +170,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                         final itemsCount = inv.items.length;
 
                         final totalTax = inv.items.fold<double>(
-                          0,
+                          0.0,
                           (sum, item) => sum + item.taxAmount,
                         );
 
@@ -215,6 +238,188 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileInvoices() {
+    return
+    // backgroundColor: Colors.transparent,
+    // extendBody: true,
+    // floatingActionButton: FloatingActionButton.extended(
+    //   label: const Text("Add Invoice"),
+    //   icon: const Icon(Icons.add),
+    //   backgroundColor: Colors.black,
+    //   foregroundColor: Colors.white,
+    //   onPressed: () {
+    //     Get.to(() => const CreateInvoiceScreen());
+    //   },
+    // ),
+    SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          children: [
+            _buildMobileHeader(),
+
+            const SizedBox(height: 16),
+
+            _buildSearch(),
+
+            const SizedBox(height: 16),
+
+            Expanded(child: _buildMobileInvoiceList()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return const Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'Invoices',
+        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildSearch() {
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          searchQuery = value;
+        });
+      },
+      decoration: InputDecoration(
+        hintText: 'Search invoice...',
+        prefixIcon: const Icon(Icons.search),
+
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileInvoiceList() {
+    return GetBuilder<InvoiceController>(
+      builder: (invoiceController) {
+        final customerController = Get.find<CustomerController>();
+
+        final invoices = invoiceController.invoices
+            .where((inv) => matchesSearch(inv, customerController))
+            .toList();
+
+        if (invoices.isEmpty) {
+          return const Center(child: Text('No invoices found'));
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.only(bottom: 150),
+
+          itemCount: invoices.length,
+        
+          itemBuilder: (context, index) {
+            return _buildInvoiceTile(invoices[invoices.length - index - 1]);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildInvoiceTile(Invoice inv) {
+    final customerController = Get.find<CustomerController>();
+
+    final vehicleController = Get.find<VehicleController>();
+
+    final customer = customerController.getCustomerById(inv.customerId);
+
+    final vehicle = vehicleController.getVehicleById(inv.vehicleId);
+
+    final tax = inv.items.fold<double>(
+      0.0,
+      (sum, item) => sum + item.taxAmount,
+    );
+
+    return ErpMobileTile(
+      onTap: () {
+        Get.to(() => InvoicePreviewScreen(invoiceId: inv.invoiceId));
+      },
+
+      leading: CircleAvatar(
+        backgroundColor: Colors.grey.shade100,
+
+        child: const Icon(Icons.receipt_long, color: Colors.black87),
+      ),
+
+      title: inv.invoiceId,
+
+      subtitles: [
+        customer?.name ?? 'Unknown Customer',
+
+        vehicle?.registrationNumber ?? 'Unknown Vehicle',
+
+        '${inv.items.length} items • Tax ₹${tax.toStringAsFixed(0)}',
+      ],
+
+      trailing: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+
+            children: [
+              SizedBox(height: 5),
+              Text(
+                '₹${inv.grandTotal.toStringAsFixed(0)}',
+
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              Text(
+                formatDate(inv.dateTime),
+
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
+          AppPopupMenu(
+            onEdit: () {
+              Get.to(() => CreateInvoiceScreen(invoice: inv));
+            },
+
+            onDelete: () {
+              showDialog(
+                context: context,
+
+                builder: (_) => DeleteConfirmationDialog(
+                  title: 'Delete Invoice',
+
+                  message:
+                      'Are you sure you want to delete '
+                      '${inv.invoiceId}?',
+
+                  onDelete: () async {
+                    await Get.find<InvoiceController>().deleteInvoice(
+                      inv.invoiceId,
+                    );
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -1,5 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:tcs/screens/invoices/create_invoice_screen.dart';
+import 'package:tcs/utils/responsive.dart';
+import 'package:tcs/widgets/app_popup_menu.dart';
+import 'package:tcs/widgets/delete_confirmation_dialog.dart';
+import 'package:tcs/widgets/erp_mobile_tile.dart';
 
 import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
@@ -25,6 +33,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   List<SearchResult> _searchResults = [];
   bool _isSearching = false;
+
+  String formatDate(DateTime dt) {
+    String day = dt.day.toString().padLeft(2, '0');
+    String month = dt.month.toString().padLeft(2, '0');
+    // Extracts the last 2 digits of the year
+    String year = (dt.year % 100).toString().padLeft(2, '0');
+
+    return "$day-$month-$year";
+  }
 
   @override
   void dispose() {
@@ -123,6 +140,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (Platform.isAndroid || Platform.isIOS) {
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.white, // background
+          statusBarIconBrightness: Brightness.dark, // Android icons
+          statusBarBrightness: Brightness.light, // iOS icons
+        ),
+      );
+    }
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopDashboard();
+    }
+
+    return _buildMobileDashboard();
+  }
+
+  Widget _buildDesktopDashboard() {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -189,6 +223,381 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // =====================================================
                 Expanded(flex: 2, child: _buildReminderPanel()),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileDashboard() {
+    return SafeArea(
+      bottom: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Dashboard",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+            ),
+
+            const SizedBox(height: 12),
+
+            _buildSearchBar(),
+
+            const SizedBox(height: 12),
+
+            _buildMobileKpis(),
+
+            const SizedBox(height: 12),
+
+            _buildMobileInvoices(),
+
+            const SizedBox(height: 12),
+
+            _buildMobileReminders(),
+
+            const SizedBox(height: 100),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileKpis() => GetBuilder<CustomerController>(
+    builder: (customerCtrl) {
+      return GetBuilder<VehicleController>(
+        builder: (vehicleCtrl) {
+          return GetBuilder<ItemController>(
+            builder: (itemCtrl) {
+              return GetBuilder<InvoiceController>(
+                builder: (invoiceCtrl) {
+                  final totalRevenue = invoiceCtrl.invoices.fold<double>(
+                    0,
+                    (sum, inv) => sum + inv.grandTotal,
+                  );
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _kpiCard(
+                              "Customers",
+                              customerCtrl.customers.length.toString(),
+                              Icons.people_outline,
+                              () {},
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: _kpiCard(
+                              "Vehicles",
+                              vehicleCtrl.vehicles.length.toString(),
+                              Icons.directions_car_outlined,
+                              () {},
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _kpiCard(
+                              "Items",
+                              itemCtrl.items.length.toString(),
+                              Icons.inventory_2_outlined,
+                              () {},
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: _kpiCard(
+                              "Invoices",
+                              invoiceCtrl.invoices.length.toString(),
+                              Icons.receipt_outlined,
+                              () {},
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      _kpiCard(
+                        "Revenue",
+                        "₹${totalRevenue.toStringAsFixed(2)}",
+                        Icons.currency_rupee,
+                        () {},
+                        isRevenue: true,
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+
+  Widget _buildMobileInvoices() {
+    return GetBuilder<InvoiceController>(
+      builder: (invoiceCtrl) {
+        final customerCtrl = Get.find<CustomerController>();
+        final vehicleCtrl = Get.find<VehicleController>();
+
+        final recentInvoices = invoiceCtrl.invoices.toList()
+          ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+        final latest5 = recentInvoices.take(5).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Recent Invoices",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 12),
+
+            if (latest5.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: Text("No invoices found")),
+              )
+            else
+              ...latest5.map((inv) {
+                final customer = customerCtrl.getCustomerById(inv.customerId);
+
+                final vehicle = vehicleCtrl.getVehicleById(inv.vehicleId);
+
+                return ErpMobileTile(
+                  onTap: () {
+                    Get.to(
+                      () => InvoicePreviewScreen(invoiceId: inv.invoiceId),
+                    );
+                  },
+
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.grey.shade100,
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  title: inv.invoiceId,
+
+                  subtitles: [
+                    customer?.name ?? "Unknown Customer",
+                    vehicle?.registrationNumber ?? "Unknown Vehicle",
+                  ],
+
+                  trailing: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+
+                        children: [
+                          SizedBox(height: 5),
+                          Text(
+                            '₹${inv.grandTotal.toStringAsFixed(0)}',
+
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          Text(
+                            formatDate(inv.dateTime),
+
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                      AppPopupMenu(
+                        onEdit: () {
+                          Get.to(() => CreateInvoiceScreen(invoice: inv));
+                        },
+
+                        onDelete: () {
+                          showDialog(
+                            context: context,
+
+                            builder: (_) => DeleteConfirmationDialog(
+                              title: 'Delete Invoice',
+
+                              message:
+                                  'Are you sure you want to delete '
+                                  '${inv.invoiceId}?',
+
+                              onDelete: () async {
+                                await Get.find<InvoiceController>()
+                                    .deleteInvoice(inv.invoiceId);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileReminders() {
+    return GetBuilder<ReminderController>(
+      builder: (reminderCtrl) {
+        final overdue = reminderCtrl.getOverdueReminders();
+        final dueThisWeek = reminderCtrl.getDueThisWeek();
+        final dueThisMonth = reminderCtrl.getDueThisMonth();
+
+        final allRelevant = <_ReminderGroup>{};
+
+        for (final r in overdue) {
+          allRelevant.add(_ReminderGroup(r, ReminderUrgency.overdue));
+        }
+
+        for (final r in dueThisWeek) {
+          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
+            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisWeek));
+          }
+        }
+
+        for (final r in dueThisMonth) {
+          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
+            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisMonth));
+          }
+        }
+
+        final sorted = allRelevant.toList()
+          ..sort((a, b) => a.reminder.dueDate.compareTo(b.reminder.dueDate));
+
+        final top5 = sorted.take(5).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Reminders',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 12),
+
+            if (top5.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: Text('No pending reminders')),
+              )
+            else
+              ...top5.map((group) => _buildMobileReminderTile(group)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileReminderTile(_ReminderGroup group) {
+    final reminder = group.reminder;
+
+    final vehicleCtrl = Get.find<VehicleController>();
+    final customerCtrl = Get.find<CustomerController>();
+
+    final vehicle = vehicleCtrl.getVehicleById(reminder.vehicleId);
+
+    final customer = customerCtrl.getCustomerById(reminder.customerId);
+
+    Color color;
+    String label;
+
+    switch (group.urgency) {
+      case ReminderUrgency.overdue:
+        color = Colors.red;
+        label = 'Overdue';
+        break;
+
+      case ReminderUrgency.dueThisWeek:
+        color = Colors.orange;
+        label = 'This Week';
+        break;
+
+      case ReminderUrgency.dueThisMonth:
+        color = Colors.blue;
+        label = 'This Month';
+        break;
+    }
+
+    return ErpMobileTile(
+      onTap: () {},
+
+      leading: CircleAvatar(
+        backgroundColor: color.withOpacity(0.1),
+        child: Icon(Icons.notifications_outlined, color: color),
+      ),
+
+      title: reminder.title,
+
+      subtitles: [
+        if (customer != null) customer.name,
+
+        if (vehicle != null)
+          '${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber})',
+
+        // 'Due: '
+        //     '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
+        //     '${reminder.dueDate.month.toString().padLeft(2, '0')}-'
+        //     '${reminder.dueDate.year.toString()}',
+        if (reminder.notes != null && reminder.notes!.trim().isNotEmpty)
+          reminder.notes!,
+      ],
+
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
+            '${reminder.dueDate.month.toString().padLeft(2, '0')}-'
+            '${reminder.dueDate.year.toString().substring(2)}',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -380,29 +789,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     VoidCallback onTap, {
     bool isRevenue = false,
   }) {
+    final isMobile = Responsive.isMobile(context);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(isMobile ? 14 : 20),
           decoration: BoxDecoration(
+            color: Colors.white,
             border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(icon, size: 20, color: Colors.black54),
+                  Icon(icon, size: isMobile ? 18 : 20, color: Colors.black54),
+
                   const Spacer(),
+
                   if (isRevenue)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 5 : 6,
+                        vertical: isMobile ? 1 : 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
@@ -411,7 +825,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text(
                         "Revenue",
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: isMobile ? 8 : 9,
                           color: Colors.green.shade700,
                           fontWeight: FontWeight.w500,
                         ),
@@ -419,19 +833,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+
+              SizedBox(height: isMobile ? 10 : 12),
+
               Text(
                 value,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: isRevenue ? 20 : 24,
+                  fontSize: isMobile
+                      ? (isRevenue ? 16 : 20)
+                      : (isRevenue ? 20 : 24),
                   fontWeight: FontWeight.bold,
                   color: isRevenue ? Colors.green.shade700 : Colors.black,
                 ),
               ),
-              const SizedBox(height: 4),
+
+              SizedBox(height: isMobile ? 2 : 4),
+
               Text(
                 label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isMobile ? 11 : 12,
+                  color: Colors.grey.shade600,
+                ),
               ),
             ],
           ),

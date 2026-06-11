@@ -3,13 +3,16 @@ import 'package:get/get.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/customer_model.dart';
+import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/custom_button.dart';
 
 class AddCustomerDialog extends StatefulWidget {
+  final ScrollController? scrollController;
+
   final Customer? customer;
 
-  const AddCustomerDialog({super.key, this.customer});
+  const AddCustomerDialog({super.key, this.customer, this.scrollController});
 
   @override
   State<AddCustomerDialog> createState() => _AddCustomerDialogState();
@@ -100,6 +103,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopAddCustomer(context);
+    }
+
+    return _buildMobileAddCustomer(context);
+  }
+
+  Widget _buildDesktopAddCustomer(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -279,6 +290,160 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileAddCustomer(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.92,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 14),
+
+            _handleBar(),
+
+            // const SizedBox(height: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _title(),
+                    const SizedBox(height: 20),
+
+                    _field(
+                      "Name *",
+                      nameController,
+                      hint: "Enter customer name",
+                    ),
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Contact 1 *",
+                      contact1Controller,
+                      hint: "Enter contact number",
+                      keyboard: TextInputType.phone,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Contact 2",
+                      contact2Controller,
+                      hint: "Enter alternate number",
+                      keyboard: TextInputType.phone,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Address",
+                      addressController,
+                      hint: "Enter address",
+                      maxLines: 3,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Email",
+                      emailController,
+                      hint: "Enter email",
+                      keyboard: TextInputType.emailAddress,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "GST Number",
+                      gstController,
+                      hint: "Enter GST number",
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "PAN Number",
+                      panController,
+                      hint: "Enter PAN number",
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    _buttons(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _handleBar() {
+    return Center(
+      child: Container(
+        width: 50,
+        height: 5,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _title() {
+    return Text(
+      isEditing ? "Edit Customer" : "Add Customer",
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    TextInputType? keyboard,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+
+        const SizedBox(height: 6),
+
+        AppTextField(
+          controller: controller,
+          hintText: hint ?? "",
+          keyboardType: keyboard,
+          maxLines: maxLines,
+        ),
+      ],
+    );
+  }
+
+  Widget _buttons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        cButton(() => Navigator.pop(context), "Cancel", false),
+        const SizedBox(width: 10),
+        cButton(saveCustomer, isEditing ? "Update" : "Save", true),
+      ],
     );
   }
 }

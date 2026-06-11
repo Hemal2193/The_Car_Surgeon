@@ -1,34 +1,55 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
-import 'dart:typed_data';
 import 'package:printing/printing.dart';
 import '../models/invoice_model.dart';
 
 class InvoicePdfService {
+  static Uint8List? _cachedLogo;
+
+  static Future<Uint8List> _getLogo() async {
+    if (_cachedLogo != null) return _cachedLogo!;
+    try {
+      _cachedLogo = (await rootBundle.load(
+        'assets/logo.jpeg',
+      )).buffer.asUint8List();
+    } catch (_) {
+      _cachedLogo = Uint8List(0);
+    }
+    return _cachedLogo!;
+  }
+
   // =====================================================
   // CREATE PDF DOCUMENT
   // =====================================================
-  static pw.Document _buildPdfDocument(Invoice invoice) {
+  static pw.Document _buildPdfDocument(Invoice invoice, Uint8List logoBytes) {
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: PdfPageFormat.a4.copyWith(
+          marginBottom: 0,
+          marginTop: 0,
+          marginLeft: 0,
+          marginRight: 0,
+        ),
         margin: const pw.EdgeInsets.all(24),
+
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              _buildHeader(invoice),
+              _buildHeader(invoice, logoBytes),
 
               pw.SizedBox(height: 20),
 
@@ -58,7 +79,8 @@ class InvoicePdfService {
   // PDF BYTES (FOR PREVIEW)
   // =====================================================
   static Future<Uint8List> generatePdfBytes(Invoice invoice) async {
-    final pdf = _buildPdfDocument(invoice);
+    final logoBytes = await _getLogo();
+    final pdf = _buildPdfDocument(invoice, logoBytes);
 
     return pdf.save();
   }
@@ -96,7 +118,7 @@ class InvoicePdfService {
   // =====================================================
   // HEADER
   // =====================================================
-  static pw.Widget _buildHeader(Invoice invoice) {
+  static pw.Widget _buildHeader(Invoice invoice, Uint8List logoBytes) {
     final vehicleController = Get.find<VehicleController>();
     final reminderCtrl = Get.find<ReminderController>();
 
@@ -135,9 +157,7 @@ class InvoicePdfService {
                         horizontalRadius: 4,
                         verticalRadius: 4,
                         child: pw.Image(
-                          pw.MemoryImage(
-                            File('assets/logo.jpeg').readAsBytesSync(),
-                          ),
+                          pw.MemoryImage(logoBytes),
                           width: 80,
                           height: 80,
                         ),
@@ -159,7 +179,7 @@ class InvoicePdfService {
                                   style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     fontSize: 10,
-                                  ), // Style before newline
+                                  ),
                                 ),
                                 pw.TextSpan(
                                   text: "24ABWPW0365P1ZO",
@@ -167,7 +187,7 @@ class InvoicePdfService {
                                     fontWeight: pw.FontWeight.normal,
                                     fontSize: 12,
                                     color: PdfColors.grey900,
-                                  ), // Style after newline
+                                  ),
                                 ),
                               ],
                             ),
@@ -184,7 +204,7 @@ class InvoicePdfService {
                                   style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,
                                     fontSize: 10,
-                                  ), // Style before newline
+                                  ),
                                 ),
                                 pw.TextSpan(
                                   text: "7069779966",
@@ -192,7 +212,7 @@ class InvoicePdfService {
                                     fontWeight: pw.FontWeight.normal,
                                     fontSize: 12,
                                     color: PdfColors.grey900,
-                                  ), // Style after newline
+                                  ),
                                 ),
                               ],
                             ),
@@ -208,7 +228,7 @@ class InvoicePdfService {
                               style: pw.TextStyle(
                                 fontWeight: pw.FontWeight.bold,
                                 fontSize: 9,
-                              ), // Style before newline
+                              ),
                             ),
                             pw.TextSpan(
                               text: "ABWPW0365P",
@@ -216,7 +236,7 @@ class InvoicePdfService {
                                 fontWeight: pw.FontWeight.normal,
                                 fontSize: 11,
                                 color: PdfColors.grey900,
-                              ), // Style after newline
+                              ),
                             ),
                           ],
                         ),
@@ -230,7 +250,7 @@ class InvoicePdfService {
                               style: pw.TextStyle(
                                 fontWeight: pw.FontWeight.bold,
                                 fontSize: 9,
-                              ), // Style before newline
+                              ),
                             ),
                             pw.TextSpan(
                               text: "thecarsurgeonbaroda@gmail.com",
@@ -238,7 +258,7 @@ class InvoicePdfService {
                                 fontWeight: pw.FontWeight.normal,
                                 fontSize: 11,
                                 color: PdfColors.grey900,
-                              ), // Style after newline
+                              ),
                             ),
                           ],
                         ),
@@ -667,60 +687,6 @@ class InvoicePdfService {
       ),
     );
   }
-
-  // =====================================================
-  // TOTAL SECTION
-  // =====================================================
-  // static pw.Widget _buildTotalSection(Invoice invoice) {
-  //   final subtotal = invoice.items.fold<double>(
-  //     0,
-  //     (sum, e) => sum + (e.qty * e.rate),
-  //   );
-
-  //   final tax = invoice.items.fold<double>(0, (sum, e) => sum + e.taxAmount);
-
-  //   final grand = subtotal + tax;
-
-  //   return pw.Container(
-  //     alignment: pw.Alignment.centerRight,
-  //     child: pw.Container(
-  //       width: 200,
-  //       padding: const pw.EdgeInsets.all(10),
-  //       decoration: pw.BoxDecoration(
-  //         border: pw.Border.all(),
-  //         borderRadius: pw.BorderRadius.circular(8),
-  //       ),
-  //       child: pw.Column(
-  //         crossAxisAlignment: pw.CrossAxisAlignment.start,
-  //         children: [
-  //           _row("Subtotal", subtotal),
-  //           _row("Tax", tax),
-  //           pw.Divider(),
-  //           pw.Row(
-  //             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //             children: [
-  //               pw.Text(
-  //                 "Grand Total: Rs.",
-  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-  //               ),
-  //               pw.Text(
-  //                 grand.toStringAsFixed(2),
-  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-  //               ),
-  //             ],
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // static pw.Widget _row(String label, double value) {
-  //   return pw.Row(
-  //     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //     children: [pw.Text(label), pw.Text("Rs. ${value.toStringAsFixed(2)}")],
-  //   );
-  // }
 
   // =====================================================
   // FOOTER

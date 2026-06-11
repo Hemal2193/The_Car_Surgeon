@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tcs/database/id_generator.dart';
+import 'package:tcs/utils/responsive.dart';
 
 import '../../controllers/item_controller.dart';
 import '../../models/item_model.dart';
@@ -8,9 +9,11 @@ import '../../widgets/app_text_field.dart';
 import '../../widgets/custom_button.dart';
 
 class AddItemDialog extends StatefulWidget {
+  final ScrollController? scrollController;
+
   final Item? item;
 
-  const AddItemDialog({super.key, this.item});
+  const AddItemDialog({super.key, this.item, this.scrollController});
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -189,6 +192,14 @@ class _AddItemDialogState extends State<AddItemDialog> {
   // =====================================================
   @override
   Widget build(BuildContext context) {
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopAddItem(context);
+    }
+
+    return _buildMobileAddItem(context);
+  }
+
+  Widget _buildDesktopAddItem(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -391,6 +402,204 @@ class _AddItemDialogState extends State<AddItemDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileAddItem(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.92,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: 14),
+            _handleBar(),
+
+            Expanded(
+              child: SingleChildScrollView(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _title(),
+                    const SizedBox(height: 20),
+
+                    _field("Item Name *", nameController),
+                    const SizedBox(height: 14),
+
+                    _label("Type"),
+                    Wrap(
+                      spacing: 10,
+                      children: types.map((t) {
+                        final selected = selectedType == t;
+
+                        return _chip(
+                          t,
+                          selected,
+                          () => setState(() => selectedType = t),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Row(
+                      children: [
+                        Expanded(child: _field("HSN / SAC", hsnController)),
+                        const SizedBox(width: 12),
+
+                        Expanded(child: _gstField()),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _label("Qty Type"),
+                    Wrap(
+                      spacing: 10,
+                      children: [
+                        ...qtyTypes.map((q) {
+                          final selected = selectedQtyType == q;
+                          return _chip(
+                            q,
+                            selected,
+                            () => setState(() => selectedQtyType = q),
+                          );
+                        }),
+                        _chip("+ Add", false, _showAddUnitDialog),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Price",
+                      priceController,
+                      keyboard: TextInputType.number,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    _buttons(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _handleBar() {
+    return Center(
+      child: Container(
+        width: 50,
+        height: 5,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _title() {
+    return Text(
+      isEditing ? "Edit Item" : "Add Item",
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    TextInputType? keyboard,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        AppTextField(
+          controller: controller,
+          hintText: label,
+          keyboardType: keyboard,
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(String text, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.black : Colors.white,
+          border: Border.all(color: Colors.black26),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(color: selected ? Colors.white : Colors.black),
+        ),
+      ),
+    );
+  }
+
+  Widget _gstField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label("GST %"),
+        CompositedTransformTarget(
+          link: _gstLink,
+          child: GestureDetector(
+            onTap: _toggleGstDropdown,
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black26),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(selectedGst),
+                  const Icon(Icons.keyboard_arrow_down),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buttons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        cButton(() => Navigator.pop(context), "Cancel", false),
+        const SizedBox(width: 10),
+        cButton(_saveItem, isEditing ? "Update" : "Save", true),
+      ],
     );
   }
 

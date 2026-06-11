@@ -9,6 +9,7 @@ import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/customer_model.dart';
 import 'package:tcs/models/vehicle_model.dart';
 import 'package:tcs/services/customer_cache.dart';
+import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_fuel_field.dart';
 
 import 'package:tcs/widgets/app_text_field.dart';
@@ -16,9 +17,11 @@ import 'package:tcs/widgets/custom_button.dart';
 import 'package:tcs/widgets/app_selector.dart';
 
 class AddVehicleDialog extends StatefulWidget {
+  final ScrollController? scrollController;
+
   final Vehicle? vehicle;
 
-  const AddVehicleDialog({super.key, this.vehicle});
+  const AddVehicleDialog({super.key, this.vehicle, this.scrollController});
 
   @override
   State<AddVehicleDialog> createState() => _AddVehicleDialogState();
@@ -104,6 +107,13 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopAddVehicle(context);
+    }
+    return _buildMobileAddVehicle(context);
+  }
+
+  Widget _buildDesktopAddVehicle(BuildContext context) {
     Get.find<CustomerController>();
 
     return Dialog(
@@ -256,6 +266,152 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileAddVehicle(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.92,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 14),
+
+            _handleBar(),
+
+            Expanded(
+              child: SingleChildScrollView(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _title(),
+                    const SizedBox(height: 20),
+
+                    _label("Customer *"),
+                    AppSelector<Customer>(
+                      items: Get.find<CustomerController>().customers,
+                      initialItem: selectedCustomer,
+                      hintText: "Select Customer",
+                      displayText: (c) => "${c.name} (${c.customerId})",
+                      searchText: (c) => "${c.name} ${c.customerId}",
+                      itemBuilder: (c) => Text(c.name),
+                      onSelected: (customer) {
+                        selectedCustomer = customer;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field("Registration Number *", registrationController),
+                    const SizedBox(height: 14),
+
+                    _label("Fuel Type"),
+                    AppFuelField(
+                      initialValue: fuelType,
+                      onSelected: (value) {
+                        fuelType = value;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _field("Make *", makeController),
+                    const SizedBox(height: 14),
+
+                    _field("Model *", modelController),
+                    const SizedBox(height: 14),
+
+                    _field("Vehicle Color", colorController),
+                    const SizedBox(height: 14),
+
+                    _field("Engine Number", engineController),
+                    const SizedBox(height: 14),
+
+                    _field("Chassis Number", chassisController),
+                    const SizedBox(height: 14),
+
+                    _field(
+                      "Odometer (Km)",
+                      odometerController,
+                      keyboard: TextInputType.number,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    _buttons(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _handleBar() {
+    return Center(
+      child: Container(
+        width: 50,
+        height: 5,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _title() {
+    return Text(
+      isEditing ? "Edit Vehicle" : "Add Vehicle",
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _label(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    TextInputType? keyboard,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        AppTextField(
+          controller: controller,
+          keyboardType: keyboard,
+          hintText: label,
+        ),
+      ],
+    );
+  }
+
+  Widget _buttons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        cButton(() => Navigator.pop(context), "Cancel", false),
+        const SizedBox(width: 10),
+        cButton(saveVehicle, isEditing ? "Update" : "Save", true),
+      ],
     );
   }
 

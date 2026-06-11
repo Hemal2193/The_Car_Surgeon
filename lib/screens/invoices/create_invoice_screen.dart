@@ -5,6 +5,7 @@ import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/models/reminder_model.dart';
+import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_selector.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/custom_button.dart';
@@ -310,455 +311,794 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopCreateInvoice(context);
+    }
+
+    return _buildMobileCreateInvoice(context);
+  }
+
+  Widget _buildMobileCreateInvoice(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _mobileTopBar(),
+
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _mobileCustomerSelector(),
+                  const SizedBox(height: 12),
+
+                  _mobileVehicleSelector(),
+                  const SizedBox(height: 20),
+
+                  _mobileAddItemButton(),
+                  const SizedBox(height: 12),
+
+                  _mobileItemsList(),
+
+                  const SizedBox(height: 20),
+                  _mobileReminderSection(),
+                ],
+              ),
+            ),
+
+            _mobileBottomBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Get.back(),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isEditing ? "Edit Invoice" : "Create Invoice",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mobileCustomerSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Customer *", style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+
+        AppSelector<Customer>(
+          key: ValueKey('mobile_customer_$_customerSelectorVersion'),
+          items: Get.find<CustomerController>().customers,
+          initialItem: selectedCustomer,
+          hintText: "Select Customer",
+          displayText: (c) => c.name,
+          searchText: (c) => c.name,
+          itemBuilder: (c) => Text(c.name),
+          onSelected: (c) {
+            setState(() {
+              selectedCustomer = c;
+              selectedVehicle = null;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileVehicleSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Vehicle", style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+
+        if (selectedCustomer == null)
+          const Text("Select customer first")
+        else
+          AppSelector<Vehicle>(
+            items: Get.find<VehicleController>().vehicles
+                .where((v) => v.customerId == selectedCustomer!.customerId)
+                .toList(),
+            initialItem: selectedVehicle,
+            hintText: "Select Vehicle",
+            displayText: (v) => v.registrationNumber,
+            searchText: (v) => v.registrationNumber,
+            itemBuilder: (v) => Text(v.registrationNumber),
+            onSelected: (v) {
+              setState(() => selectedVehicle = v);
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _mobileAddItemButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.add),
+        label: const Text("Add Item"),
+        onPressed: _openAddItemSheet,
+      ),
+    );
+  }
+
+  Widget _mobileItemsList() {
+    if (rows.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text("No items added"),
+        ),
+      );
+    }
+
+    return Column(
+      children: List.generate(rows.length, (i) {
+        final r = rows[i];
+        return _itemCard(r, i);
+      }),
+    );
+  }
+
+  Widget _itemCard(_InvoiceRow r, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              r.item.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+
+            Text("Qty: ${r.qty} | Rate: ${r.rate}"),
+            Text("Tax: ${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)"),
+            Text("Total: ${r.totalAmount.toStringAsFixed(2)}"),
+
+            const SizedBox(height: 10),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 18),
+                  onPressed: () {
+                    _editRow(index);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, size: 18),
+                  onPressed: () {
+                    setState(() => rows.removeAt(index));
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editRow(int index) {
+    final r = rows[index];
+
+    setState(() {
+      selectedItem = r.item;
+      qty = r.qty;
+      rate = r.rate;
+
+      qtyController.text = r.qty.toString();
+      rateController.text = r.rate.toString();
+
+      rows.removeAt(index);
+    });
+  }
+
+  Widget _mobileBottomBar() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              "Total: Rs. ${grandTotal.toStringAsFixed(2)}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          cButton(saveInvoice, "Save", true),
+        ],
+      ),
+    );
+  }
+
+  void _openAddItemSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppSelector<Item>(
+                items: Get.find<ItemController>().items,
+                initialItem: selectedItem,
+                hintText: "Select Item",
+                displayText: (i) => i.name,
+                searchText: (i) => i.name,
+                itemBuilder: (i) => Text(i.name),
+                onSelected: (i) => selectedItem = i,
+              ),
+
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: "Qty"),
+              ),
+
+              TextField(
+                controller: rateController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: "Rate"),
+              ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    qty = int.tryParse(qtyController.text) ?? 1;
+                    rate = double.tryParse(rateController.text) ?? 0;
+                  });
+
+                  addToInvoice();
+                  Navigator.pop(context);
+                },
+                child: const Text("Add"),
+              ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _mobileReminderSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+
+        const Text(
+          "Reminder (Optional)",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+
+        const SizedBox(height: 10),
+
+        // TITLE
+        const Text("Title", style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _reminderTitleController,
+          decoration: InputDecoration(
+            hintText: "e.g. Follow up payment",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // DUE DATE
+        Row(
+          children: [
+            const Text(
+              "Due Date",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: _pickDueDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "${_reminderDueDate.day.toString().padLeft(2, '0')}-"
+                  "${_reminderDueDate.month.toString().padLeft(2, '0')}-"
+                  "${_reminderDueDate.year}",
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        // NOTES
+        const Text("Notes", style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+
+        TextField(
+          controller: _reminderNotesController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: "Optional notes...",
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildDesktopCreateInvoice(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
           const AppTitleBar(),
-
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // =========================================================
-                // LEFT PANEL
-                // =========================================================
-                Container(
-                  width: 320,
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(color: Colors.white),
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(
-                      context,
-                    ).copyWith(scrollbars: false),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // =====================================================
-                          // HEADER WITH BACK BUTTON (NEW)
-                          // =====================================================
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back),
-                                onPressed: () {
-                                  Get.back();
-                                },
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                isEditing ? "Edit Invoice" : "Create Invoice",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Customer *',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 8),
-                          AppSelector<Customer>(
-                            key: ValueKey(
-                              'invoice_customer_selector_$_customerSelectorVersion',
-                            ),
-                            items: Get.find<CustomerController>().customers,
-                            initialItem: selectedCustomer,
-                            hintText: 'Select Customer',
-                            displayText: (c) => '${c.name} (${c.customerId})',
-                            searchText: (c) => '${c.name} ${c.customerId}',
-                            itemBuilder: (c) => Text(c.name),
-                            onSelected: (c) {
-                              setState(() {
-                                selectedCustomer = c;
-                                selectedVehicle = null;
-                              });
-                            },
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          const Text(
-                            'Vehicle',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 8),
-                          if (selectedCustomer != null)
-                            AppSelector<Vehicle>(
-                              key: ValueKey(selectedCustomer!.customerId),
-                              items: Get.find<VehicleController>().vehicles
-                                  .where(
-                                    (v) =>
-                                        v.customerId ==
-                                        selectedCustomer!.customerId,
-                                  )
-                                  .toList(),
-                              initialItem: selectedVehicle,
-                              hintText: 'Select Vehicle',
-                              displayText: (v) => v.registrationNumber,
-                              searchText: (v) =>
-                                  '${v.registrationNumber} ${v.make} ${v.model}',
-                              itemBuilder: (v) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(v.registrationNumber),
-                                  Text(
-                                    '${v.make} - ${v.model}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onSelected: (v) {
-                                setState(() {
-                                  selectedVehicle = v;
-                                });
-                              },
-                            )
-                          else
-                            const Text("Select customer first"),
-
-                          const SizedBox(height: 16),
-
-                          const Text(
-                            'Item',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 8),
-                          AppSelector<Item>(
-                            key: ValueKey(
-                              'invoice_item_selector_$_itemSelectorVersion',
-                            ),
-                            items: Get.find<ItemController>().items,
-                            initialItem: selectedItem,
-                            hintText: 'Select Item',
-                            displayText: (i) => i.name,
-                            searchText: (i) => i.name,
-                            itemBuilder: (i) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(i.name),
-                                Text(
-                                  'Rs. ${i.price ?? 0}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onSelected: (i) {
-                              setState(() {
-                                selectedItem = i;
-
-                                qty = 1;
-                                qtyController.text = "1";
-
-                                rate = i.price ?? 0;
-                                rateController.text = rate.toString();
-                              });
-                            },
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      "Quantity",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    TextField(
-                                      controller: qtyController,
-                                      keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (v) {
-                                        qty = int.tryParse(v) ?? 1;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      "Rate",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    TextField(
-                                      controller: rateController,
-                                      keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (v) {
-                                        rate = double.tryParse(v) ?? 0;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 25),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: cButton(addToInvoice, 'Add Item', true),
-                          ),
-
-                          const SizedBox(height: 25),
-
-                          // =====================================================
-                          // REMINDER SECTION
-                          // =====================================================
-                          const Divider(),
-                          const SizedBox(height: 10),
-
-                          const Text(
-                            "Add Reminder",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          const Text(
-                            'Reminder Title',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _reminderTitleController,
-                            decoration: InputDecoration(
-                              hintText: 'e.g. Follow up payment',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children: [
-                              const Text(
-                                'Due Date',
-                                style: TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  overlayColor: Colors.black,
-                                ),
-                                icon: const Icon(
-                                  Icons.calendar_today,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  "${_reminderDueDate.day.toString().padLeft(2, '0')}-"
-                                  "${_reminderDueDate.month.toString().padLeft(2, '0')}-"
-                                  "${_reminderDueDate.year}",
-                                ),
-                                onPressed: _pickDueDate,
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          const Text(
-                            'Notes (optional)',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _reminderNotesController,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              hintText: 'Any additional notes...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                Container(
-                  width: 1,
-                  height: double.infinity,
-                  color: Colors.grey.shade300,
-                ),
-                // =========================================================
-                // RIGHT PANEL (UNCHANGED)
-                // =========================================================
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "Invoice Items",
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-
-                            cButton(
-                              saveInvoice,
-                              isEditing ? 'Update Invoice' : 'Save Invoice',
-                              true,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-
-                        Expanded(
-                          child: rows.isEmpty
-                              ? Center(child: Text("No items added"))
-                              : Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    child: DataTable(
-                                      columns: const [
-                                        DataColumn(label: Text("Sr")),
-                                        DataColumn(label: Text("Item")),
-                                        DataColumn(label: Text("HSN")),
-                                        DataColumn(label: Text("Qty")),
-                                        DataColumn(label: Text("Rate")),
-                                        DataColumn(label: Text("Tax")),
-                                        DataColumn(label: Text("Total")),
-                                        DataColumn(label: Text("Action")),
-                                      ],
-                                      rows: List.generate(rows.length, (i) {
-                                        final r = rows[i];
-                                        return DataRow(
-                                          cells: [
-                                            DataCell(Text("${i + 1}")),
-                                            DataCell(Text(r.item.name)),
-                                            DataCell(
-                                              Text(r.item.hsnSac ?? "-"),
-                                            ),
-                                            DataCell(Text("${r.qty}")),
-                                            DataCell(Text("${r.rate}")),
-                                            DataCell(
-                                              Text(
-                                                "${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
-                                              ),
-                                            ),
-                                            DataCell(
-                                              Text(
-                                                r.totalAmount.toStringAsFixed(
-                                                  2,
-                                                ),
-                                              ),
-                                            ),
-                                            DataCell(
-                                              IconButton(
-                                                icon: const Icon(Icons.close),
-                                                onPressed: () {
-                                                  setState(() {
-                                                    rows.removeAt(i);
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      }),
-                                    ),
-                                  ),
-                                ),
-                        ),
-
-                        const SizedBox(height: 15),
-
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Grand Total",
-                                style: TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                              Text(
-                                "Rs. ${grandTotal.toStringAsFixed(2)}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildLeftPanel(),
+                _buildVerticalDivider(),
+                _buildRightPanel(),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLeftPanel() {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(20),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 16),
+            _buildCustomerSelector(),
+            const SizedBox(height: 16),
+            _buildVehicleSelector(),
+            const SizedBox(height: 16),
+            _buildItemSelector(),
+            const SizedBox(height: 16),
+            _buildQtyRateRow(),
+            const SizedBox(height: 20),
+            _buildAddItemButton(),
+            const SizedBox(height: 25),
+            _buildReminderSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Get.back(),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          isEditing ? "Edit Invoice" : "Create Invoice",
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Customer *', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        AppSelector<Customer>(
+          key: ValueKey('customer_$_customerSelectorVersion'),
+          items: Get.find<CustomerController>().customers,
+          initialItem: selectedCustomer,
+          hintText: 'Select Customer',
+          displayText: (c) => '${c.name} (${c.customerId})',
+          searchText: (c) => '${c.name} ${c.customerId}',
+          itemBuilder: (c) => Text(c.name),
+          onSelected: (c) {
+            setState(() {
+              selectedCustomer = c;
+              selectedVehicle = null;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVehicleSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Vehicle', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        if (selectedCustomer != null)
+          AppSelector<Vehicle>(
+            key: ValueKey(selectedCustomer!.customerId),
+            items: Get.find<VehicleController>().vehicles
+                .where((v) => v.customerId == selectedCustomer!.customerId)
+                .toList(),
+            initialItem: selectedVehicle,
+            hintText: 'Select Vehicle',
+            displayText: (v) => v.registrationNumber,
+            searchText: (v) => '${v.registrationNumber} ${v.make} ${v.model}',
+            itemBuilder: (v) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(v.registrationNumber),
+                Text(
+                  '${v.make} - ${v.model}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+            onSelected: (v) {
+              setState(() {
+                selectedVehicle = v;
+              });
+            },
+          )
+        else
+          const Text("Select customer first"),
+      ],
+    );
+  }
+
+  Widget _buildItemSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Item', style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        AppSelector<Item>(
+          key: ValueKey('item_$_itemSelectorVersion'),
+          items: Get.find<ItemController>().items,
+          initialItem: selectedItem,
+          hintText: 'Select Item',
+          displayText: (i) => i.name,
+          searchText: (i) => i.name,
+          itemBuilder: (i) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(i.name),
+              Text(
+                'Rs. ${i.price ?? 0}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          onSelected: (i) {
+            setState(() {
+              selectedItem = i;
+              qty = 1;
+              qtyController.text = "1";
+              rate = i.price ?? 0;
+              rateController.text = rate.toString();
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQtyRateRow() {
+    return Row(
+      children: [
+        Expanded(child: _qtyField()),
+        const SizedBox(width: 10),
+        Expanded(child: _rateField()),
+      ],
+    );
+  }
+
+  Widget _qtyField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Quantity", style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: qtyController,
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            qty = int.tryParse(v) ?? 1;
+          },
+          decoration: _inputDecoration(),
+        ),
+      ],
+    );
+  }
+
+  Widget _rateField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Rate", style: TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: rateController,
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            rate = double.tryParse(v) ?? 0;
+          },
+          decoration: _inputDecoration(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddItemButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: cButton(addToInvoice, 'Add Item', true),
+    );
+  }
+
+  Widget _buildReminderSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        const SizedBox(height: 10),
+
+        const Text(
+          "Add Reminder",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+
+        const SizedBox(height: 12),
+        _reminderTitleField(),
+        const SizedBox(height: 16),
+        _reminderDatePicker(),
+        const SizedBox(height: 12),
+        _reminderNotesField(),
+      ],
+    );
+  }
+
+  Widget _reminderTitleField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Reminder Title',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _reminderTitleController,
+          decoration: InputDecoration(
+            hintText: 'e.g. Follow up payment',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _reminderDatePicker() {
+    return Row(
+      children: [
+        const Text('Due Date', style: TextStyle(fontWeight: FontWeight.w500)),
+        const Spacer(),
+        TextButton.icon(
+          style: TextButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          icon: const Icon(Icons.calendar_today, size: 18),
+          label: Text(
+            "${_reminderDueDate.day.toString().padLeft(2, '0')}-"
+            "${_reminderDueDate.month.toString().padLeft(2, '0')}-"
+            "${_reminderDueDate.year}",
+          ),
+          onPressed: _pickDueDate,
+        ),
+      ],
+    );
+  }
+
+  Widget _reminderNotesField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Notes (optional)',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _reminderNotesController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Any additional notes...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRightPanel() {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _buildInvoiceHeader(),
+            const SizedBox(height: 20),
+            _buildInvoiceTable(),
+            const SizedBox(height: 15),
+            _buildGrandTotal(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInvoiceHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Invoice Items",
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+        ),
+        cButton(
+          saveInvoice,
+          isEditing ? 'Update Invoice' : 'Save Invoice',
+          true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInvoiceTable() {
+    if (rows.isEmpty) {
+      return const Expanded(child: Center(child: Text("No items added")));
+    }
+
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SingleChildScrollView(
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text("Sr")),
+              DataColumn(label: Text("Item")),
+              DataColumn(label: Text("HSN")),
+              DataColumn(label: Text("Qty")),
+              DataColumn(label: Text("Rate")),
+              DataColumn(label: Text("Tax")),
+              DataColumn(label: Text("Total")),
+              DataColumn(label: Text("Action")),
+            ],
+            rows: List.generate(rows.length, (i) {
+              final r = rows[i];
+              return DataRow(
+                cells: [
+                  DataCell(Text("${i + 1}")),
+                  DataCell(Text(r.item.name)),
+                  DataCell(Text(r.item.hsnSac ?? "-")),
+                  DataCell(Text("${r.qty}")),
+                  DataCell(Text("${r.rate}")),
+                  DataCell(
+                    Text(
+                      "${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
+                    ),
+                  ),
+                  DataCell(Text(r.totalAmount.toStringAsFixed(2))),
+                  DataCell(
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          rows.removeAt(i);
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGrandTotal() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "Grand Total",
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          Text(
+            "Rs. ${grandTotal.toStringAsFixed(2)}",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(width: 1, color: Colors.grey.shade300);
+  }
+
+  InputDecoration _inputDecoration() {
+    return InputDecoration(
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }
