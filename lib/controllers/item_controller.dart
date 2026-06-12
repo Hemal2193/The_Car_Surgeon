@@ -5,75 +5,146 @@ import 'package:tcs/controllers/invoice_controller.dart';
 import '../database/hive_boxes.dart';
 import '../models/item_model.dart';
 import '../models/invoice_model.dart';
+import '../models/sync_status.dart';
 
 class ItemController extends GetxController {
   final Box<Item> itemBox = Hive.box<Item>(HiveBoxes.items);
 
-  List<Item> get items => itemBox.values.toList();
+  /// SOURCE OF TRUTH
+  List<Item> get items =>
+      itemBox.values.where((item) => !item.isDeleted).toList();
+
+  /// ALL ITEMS (INCLUDING DELETED)
+  List<Item> get allItems => itemBox.values.toList();
+
+  Item? getItemById(String id) {
+    return items.firstWhereOrNull((item) => item.itemId == id);
+  }
+
+  /// PENDING UPSERTS FOR SUPABASE
+
+  /// PENDING DELETES FOR SUPABASE
 
   Future<void> addItem(Item item) async {
+    item.updatedAt = DateTime.now();
+    item.isDeleted = false;
+    item.syncStatus = SyncStatus.pending;
+
     await itemBox.put(item.itemId, item);
+
     update();
   }
 
   Future<void> updateItem(Item item) async {
+    item.updatedAt = DateTime.now();
+    item.syncStatus = SyncStatus.pending;
+
     await itemBox.put(item.itemId, item);
 
-    // Update all invoices that reference this item so previews/PDFs reflect changes
     _updateInvoiceItems(item);
 
     update();
   }
 
   Future<void> deleteItem(String id) async {
-    await itemBox.delete(id);
+    final item = itemBox.get(id);
+
+    if (item == null) return;
+
+    item.updatedAt = DateTime.now();
+    item.isDeleted = true;
+    item.syncStatus = SyncStatus.pending;
+
+    await itemBox.put(id, item);
+
     update();
   }
 
-  void _updateInvoiceItems(Item item) {
-    final invoiceBox = Hive.box<Invoice>(HiveBoxes.invoices);
-    bool changed = false;
+  List<Item> get pendingItems => itemBox.values
+      .where((item) => item.syncStatus == SyncStatus.pending)
+      .toList();
 
-    for (final invoice in invoiceBox.values) {
-      bool invoiceChanged = false;
+  /// CALLED BY SUPABASE SYNC SERVICE
+  Future<void> markAsSynced(String itemId) async {
+    final item = itemBox.get(itemId);
 
-      for (int i = 0; i < invoice.items.length; i++) {
-        final invoiceItem = invoice.items[i];
-        if (invoiceItem.itemId == item.itemId) {
-          final newTaxAmount = invoiceItem.qty * invoiceItem.rate * item.gst / 100;
-          final newTotalAmount = (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
-          invoice.items[i] = InvoiceItem(
-            itemId: invoiceItem.itemId,
-            name: item.name,
-            hsnSac: item.hsnSac ?? invoiceItem.hsnSac,
-            qty: invoiceItem.qty,
-            rate: invoiceItem.rate,
-            taxPercent: item.gst,
-            taxAmount: newTaxAmount,
-            totalAmount: newTotalAmount,
-            type: invoiceItem.type,
-          );
-          invoiceChanged = true;
-        }
-      }
+    if (item == null) return;
 
-      if (invoiceChanged) {
-        // Recalculate grand total
-        double newGrandTotal = 0;
-        for (final invItem in invoice.items) {
-          newGrandTotal += invItem.totalAmount;
-        }
-        invoice.grandTotal = newGrandTotal;
+    item.syncStatus = SyncStatus.synced;
 
-        invoiceBox.put(invoice.invoiceId, invoice);
-        changed = true;
-      }
-    }
+    await itemBox.put(itemId, item);
 
-    if (changed) {
-      Get.find<InvoiceController>().update();
+    update();
+  }
+
+  /// CALLED BY SUPABASE SYNC SERVICE
+
+  /// CALLED WHEN PULLING DATA FROM SUPABASE
+  Future<void> upsertFromRemote(Item remoteItem) async {
+    final local = itemBox.get(remoteItem.itemId);
+
+    if (local == null || remoteItem.updatedAt.isAfter(local.updatedAt)) {
+      remoteItem.syncStatus = SyncStatus.synced;
+
+      await itemBox.put(remoteItem.itemId, remoteItem);
+
+      update();
     }
   }
+
+void _updateInvoiceItems(Item item) {
+  final invoiceBox = Hive.box<Invoice>(HiveBoxes.invoices);
+
+  bool changed = false;
+
+  for (final invoice in invoiceBox.values) {
+    if (invoice.isDeleted) continue;
+
+    bool invoiceChanged = false;
+
+    for (int i = 0; i < invoice.items.length; i++) {
+      final invoiceItem = invoice.items[i];
+
+      if (invoiceItem.itemId == item.itemId) {
+        final newTaxAmount =
+            invoiceItem.qty * invoiceItem.rate * item.gst / 100;
+
+        final newTotalAmount =
+            (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
+
+        invoice.items[i] = InvoiceItem(
+          itemId: invoiceItem.itemId,
+          name: item.name,
+          type: invoiceItem.type,
+          hsnSac: item.hsnSac ?? invoiceItem.hsnSac,
+          qty: invoiceItem.qty,
+          rate: invoiceItem.rate,
+          taxPercent: item.gst,
+          taxAmount: newTaxAmount,
+          totalAmount: newTotalAmount,
+        );
+
+        invoiceChanged = true;
+      }
+    }
+
+    if (invoiceChanged) {
+      invoice.grandTotal = invoice.items.fold(
+        0,
+        (sum, item) => sum + item.totalAmount,
+      );
+
+      invoice.updatedAt = DateTime.now();
+      invoice.syncStatus = SyncStatus.pending;
+
+      invoiceBox.put(invoice.invoiceId, invoice);
+
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    Get.find<InvoiceController>().update();
+  }
 }
-
-
+}

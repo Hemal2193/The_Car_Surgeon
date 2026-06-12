@@ -1,5 +1,5 @@
 import 'package:hive/hive.dart';
-
+import 'sync_status.dart';
 part 'vehicle_model.g.dart';
 
 @HiveType(typeId: 1)
@@ -34,6 +34,15 @@ class Vehicle extends HiveObject {
   @HiveField(9)
   String? odoMeter;
 
+  @HiveField(10)
+  DateTime updatedAt;
+
+  @HiveField(11)
+  bool isDeleted;
+
+  @HiveField(12)
+  SyncStatus syncStatus;
+
   Vehicle({
     required this.vehicleId,
     required this.customerId,
@@ -45,5 +54,9 @@ class Vehicle extends HiveObject {
     this.chassisNumber,
     this.engineNumber,
     this.odoMeter,
-  });
+
+    DateTime? updatedAt,
+    this.isDeleted = false,
+    this.syncStatus = SyncStatus.pending,
+  }) : updatedAt = updatedAt ?? DateTime.now();
 }

@@ -27,13 +27,16 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       chassisNumber: fields[7] as String?,
       engineNumber: fields[8] as String?,
       odoMeter: fields[9] as String?,
+      updatedAt: fields[10] as DateTime?,
+      isDeleted: fields[11] as bool,
+      syncStatus: fields[12] as SyncStatus,
     );
   }
 
   @override
   void write(BinaryWriter writer, Vehicle obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.vehicleId)
       ..writeByte(1)
@@ -53,7 +56,13 @@ class VehicleAdapter extends TypeAdapter<Vehicle> {
       ..writeByte(8)
       ..write(obj.engineNumber)
       ..writeByte(9)
-      ..write(obj.odoMeter);
+      ..write(obj.odoMeter)
+      ..writeByte(10)
+      ..write(obj.updatedAt)
+      ..writeByte(11)
+      ..write(obj.isDeleted)
+      ..writeByte(12)
+      ..write(obj.syncStatus);
   }
 
   @override

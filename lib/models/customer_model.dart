@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:tcs/models/sync_status.dart';
 
 part 'customer_model.g.dart';
 
@@ -28,6 +29,15 @@ class Customer extends HiveObject {
   @HiveField(7)
   String? panNumber;
 
+  @HiveField(8)
+  DateTime updatedAt;
+
+  @HiveField(9)
+  bool isDeleted;
+
+  @HiveField(10)
+  SyncStatus syncStatus;
+
   Customer({
     required this.customerId,
     required this.name,
@@ -37,5 +47,9 @@ class Customer extends HiveObject {
     this.email,
     this.gstNumber,
     this.panNumber,
-  });
+
+    DateTime? updatedAt,
+    this.isDeleted = false,
+    this.syncStatus = SyncStatus.synced,
+  }) : updatedAt = updatedAt ?? DateTime.now();
 }

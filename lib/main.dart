@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcs/models/sync_status.dart';
+import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'controllers/customer_controller.dart';
@@ -24,6 +27,13 @@ import 'screens/homepage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://korzmnwwxywxqybyjiux.supabase.co',
+    publishableKey: 'sb_publishable_jKGuzcvKNbe0hbC7qsotng_RhqAMxLW',
+  );
+
+  SupabaseSyncService().init();
 
   // WINDOWS / DESKTOP ONLY
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -67,6 +77,10 @@ Future<void> main() async {
 
   if (!Hive.isAdapterRegistered(5)) {
     Hive.registerAdapter(ReminderAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(6)) {
+    Hive.registerAdapter(SyncStatusAdapter());
   }
 
   // OPEN BOXES

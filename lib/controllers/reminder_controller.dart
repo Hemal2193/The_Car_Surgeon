@@ -1,28 +1,88 @@
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:tcs/database/hive_boxes.dart';
-import 'package:tcs/models/reminder_model.dart';
+
+import '../database/hive_boxes.dart';
+import '../models/reminder_model.dart';
+import '../models/sync_status.dart';
 
 class ReminderController extends GetxController {
   final Box<Reminder> reminderBox = Hive.box<Reminder>(HiveBoxes.reminders);
 
+  /// SOURCE OF TRUTH
+  List<Reminder> get reminders =>
+      reminderBox.values.where((r) => !r.isDeleted).toList();
+
+  /// ALL REMINDERS (INCLUDING DELETED)
+  List<Reminder> get allReminders => reminderBox.values.toList();
+
+  /// PENDING RECORDS FOR SUPABASE SYNC
+  List<Reminder> get pendingReminders {
+    return reminderBox.values
+        .where((r) => r.syncStatus == SyncStatus.pending)
+        .toList();
+  }
+
   Future<void> addReminder(Reminder reminder) async {
+    reminder.updatedAt = DateTime.now();
+    reminder.isDeleted = false;
+    reminder.syncStatus = SyncStatus.pending;
+
     await reminderBox.put(reminder.reminderId, reminder);
+
     update();
   }
 
   Future<void> updateReminder(Reminder reminder) async {
+    reminder.updatedAt = DateTime.now();
+    reminder.syncStatus = SyncStatus.pending;
+
     await reminderBox.put(reminder.reminderId, reminder);
+
     update();
   }
 
   Future<void> deleteReminder(String reminderId) async {
-    await reminderBox.delete(reminderId);
+    final reminder = reminderBox.get(reminderId);
+
+    if (reminder == null) return;
+
+    reminder.updatedAt = DateTime.now();
+    reminder.isDeleted = true;
+    reminder.syncStatus = SyncStatus.pending;
+
+    await reminderBox.put(reminderId, reminder);
+
     update();
   }
 
+  /// CALLED BY SUPABASE SYNC SERVICE
+  Future<void> markAsSynced(String reminderId) async {
+    final reminder = reminderBox.get(reminderId);
+
+    if (reminder == null) return;
+
+    reminder.syncStatus = SyncStatus.synced;
+
+    await reminderBox.put(reminderId, reminder);
+
+    update();
+  }
+
+  /// CALLED WHEN PULLING DATA FROM SUPABASE
+  Future<void> upsertFromRemote(Reminder remoteReminder) async {
+    final local = reminderBox.get(remoteReminder.reminderId);
+
+    if (local == null || remoteReminder.updatedAt.isAfter(local.updatedAt)) {
+      remoteReminder.syncStatus = SyncStatus.synced;
+
+      await reminderBox.put(remoteReminder.reminderId, remoteReminder);
+
+      update();
+    }
+  }
+
   List<Reminder> getUpcomingReminders() {
-    return reminderBox.values
+    return reminders
         .where(
           (reminder) =>
               !reminder.completed && reminder.dueDate.isAfter(DateTime.now()),
@@ -31,7 +91,7 @@ class ReminderController extends GetxController {
   }
 
   List<Reminder> getOverdueReminders() {
-    return reminderBox.values
+    return reminders
         .where(
           (reminder) =>
               !reminder.completed && reminder.dueDate.isBefore(DateTime.now()),
@@ -42,7 +102,8 @@ class ReminderController extends GetxController {
   List<Reminder> getDueThisWeek() {
     final now = DateTime.now();
     final endOfWeek = now.add(Duration(days: 7 - now.weekday));
-    return reminderBox.values
+
+    return reminders
         .where(
           (reminder) =>
               !reminder.completed &&
@@ -55,7 +116,8 @@ class ReminderController extends GetxController {
   List<Reminder> getDueThisMonth() {
     final now = DateTime.now();
     final endOfMonth = DateTime(now.year, now.month + 1, 1);
-    return reminderBox.values
+
+    return reminders
         .where(
           (reminder) =>
               !reminder.completed &&
@@ -66,15 +128,12 @@ class ReminderController extends GetxController {
   }
 
   List<Reminder> getCompletedReminders() {
-    return reminderBox.values.where((r) => r.completed).toList();
+    return reminders.where((r) => r.completed).toList();
   }
 
   Reminder? getReminderByInvoiceId(String invoiceId) {
-    for (final reminder in reminderBox.values) {
-      if (reminder.invoiceId == invoiceId) return reminder;
-    }
-    return null;
+    return reminders.firstWhereOrNull(
+      (reminder) => reminder.invoiceId == invoiceId,
+    );
   }
-
-  // This controller will handle all the logic related to reminders, such as creating, updating, and deleting reminders.
 }

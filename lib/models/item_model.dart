@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import 'sync_status.dart';
+
 part 'item_model.g.dart';
 
 @HiveType(typeId: 2)
@@ -22,6 +24,15 @@ class Item extends HiveObject {
   @HiveField(5)
   double? price;
 
+  @HiveField(6)
+  DateTime updatedAt;
+
+  @HiveField(7)
+  bool isDeleted;
+
+  @HiveField(8)
+  SyncStatus syncStatus;
+
   Item({
     required this.itemId,
     required this.name,
@@ -29,5 +40,8 @@ class Item extends HiveObject {
     this.hsnSac,
     required this.gst,
     this.price,
-  });
+    DateTime? updatedAt,
+    this.isDeleted = false,
+    this.syncStatus = SyncStatus.pending,
+  }) : updatedAt = updatedAt ?? DateTime.now();
 }

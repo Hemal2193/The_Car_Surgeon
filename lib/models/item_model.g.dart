@@ -23,13 +23,16 @@ class ItemAdapter extends TypeAdapter<Item> {
       hsnSac: fields[3] as String?,
       gst: fields[4] as double,
       price: fields[5] as double?,
+      updatedAt: fields[6] as DateTime?,
+      isDeleted: fields[7] as bool,
+      syncStatus: fields[8] as SyncStatus,
     );
   }
 
   @override
   void write(BinaryWriter writer, Item obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.itemId)
       ..writeByte(1)
@@ -41,7 +44,13 @@ class ItemAdapter extends TypeAdapter<Item> {
       ..writeByte(4)
       ..write(obj.gst)
       ..writeByte(5)
-      ..write(obj.price);
+      ..write(obj.price)
+      ..writeByte(6)
+      ..write(obj.updatedAt)
+      ..writeByte(7)
+      ..write(obj.isDeleted)
+      ..writeByte(8)
+      ..write(obj.syncStatus);
   }
 
   @override

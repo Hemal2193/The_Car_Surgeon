@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import 'sync_status.dart';
+
 part 'invoice_model.g.dart';
 
 @HiveType(typeId: 3)
@@ -22,6 +24,19 @@ class Invoice extends HiveObject {
   @HiveField(5)
   double grandTotal;
 
+  // ==========================
+  // SYNC FIELDS
+  // ==========================
+
+  @HiveField(6)
+  DateTime updatedAt;
+
+  @HiveField(7)
+  bool isDeleted;
+
+  @HiveField(8)
+  SyncStatus syncStatus;
+
   Invoice({
     required this.invoiceId,
     required this.customerId,
@@ -29,7 +44,11 @@ class Invoice extends HiveObject {
     required this.dateTime,
     required this.items,
     required this.grandTotal,
-  });
+
+    DateTime? updatedAt,
+    this.isDeleted = false,
+    this.syncStatus = SyncStatus.pending,
+  }) : updatedAt = updatedAt ?? DateTime.now();
 }
 
 @HiveType(typeId: 4)

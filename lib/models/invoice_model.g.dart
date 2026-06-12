@@ -23,13 +23,16 @@ class InvoiceAdapter extends TypeAdapter<Invoice> {
       dateTime: fields[3] as DateTime,
       items: (fields[4] as List).cast<InvoiceItem>(),
       grandTotal: fields[5] as double,
+      updatedAt: fields[6] as DateTime?,
+      isDeleted: fields[7] as bool,
+      syncStatus: fields[8] as SyncStatus,
     );
   }
 
   @override
   void write(BinaryWriter writer, Invoice obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.invoiceId)
       ..writeByte(1)
@@ -41,7 +44,13 @@ class InvoiceAdapter extends TypeAdapter<Invoice> {
       ..writeByte(4)
       ..write(obj.items)
       ..writeByte(5)
-      ..write(obj.grandTotal);
+      ..write(obj.grandTotal)
+      ..writeByte(6)
+      ..write(obj.updatedAt)
+      ..writeByte(7)
+      ..write(obj.isDeleted)
+      ..writeByte(8)
+      ..write(obj.syncStatus);
   }
 
   @override
