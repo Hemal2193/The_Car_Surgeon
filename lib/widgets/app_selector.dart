@@ -1,126 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:tcs/widgets/app_selector_overlay.dart';
-
-// class AppSelector<T> extends StatefulWidget {
-//   final List<T> items;
-//   final Function(T) onSelected;
-//   final T? initialItem;
-//   final String? hintText;
-//   final String Function(T) displayText;
-//   final String Function(T) searchText;
-//   final Widget Function(T) itemBuilder;
-
-//   const AppSelector({
-//     super.key,
-//     required this.items,
-//     required this.onSelected,
-//     this.initialItem,
-//     this.hintText,
-//     required this.displayText,
-//     required this.searchText,
-//     required this.itemBuilder,
-//   });
-
-//   @override
-//   State<AppSelector<T>> createState() => _AppSelectorState<T>();
-// }
-
-// class _AppSelectorState<T> extends State<AppSelector<T>> {
-//   final TextEditingController controller = TextEditingController();
-//   final LayerLink _layerLink = LayerLink();
-//   OverlayEntry? _overlayEntry;
-
-//   List<T> filtered = [];
-
-//   @override
-//   void initState() {
-//     super.initState();
-
-//     final item = widget.initialItem;
-//     if (item != null) {
-//       controller.text = widget.displayText(item);
-//     }
-//   }
-
-//   void _showOverlay() {
-//     _removeOverlay();
-
-//     final overlay = Overlay.of(context);
-
-//     _overlayEntry = AppSelectorOverlay.create(
-//       context: context,
-//       link: _layerLink,
-//       onClose: _removeOverlay,
-//       children: filtered.take(6).map((item) {
-//         return ListTile(
-//           dense: true,
-//           title: widget.itemBuilder(item),
-//           onTap: () {
-//             controller.text = widget.displayText(item);
-//             widget.onSelected(item);
-//             _removeOverlay();
-//           },
-//         );
-//       }).toList(),
-//     );
-
-//     overlay.insert(_overlayEntry!);
-//   }
-
-//   void _removeOverlay() {
-//     _overlayEntry?.remove();
-//     _overlayEntry = null;
-//   }
-
-//   void _filter(String value) {
-//     setState(() {
-//       filtered = widget.items
-//           .where(
-//             (item) => widget
-//                 .searchText(item)
-//                 .toLowerCase()
-//                 .contains(value.toLowerCase()),
-//           )
-//           .toList();
-//     });
-
-//     _showOverlay();
-//   }
-
-//   @override
-//   void dispose() {
-//     _removeOverlay();
-//     controller.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return CompositedTransformTarget(
-//       link: _layerLink,
-//       child: TextField(
-//         controller: controller,
-//         onChanged: _filter,
-//         onTap: () {
-//           setState(() {
-//             filtered = widget.items;
-//           });
-//           _showOverlay();
-//         },
-//         decoration: InputDecoration(
-//           hintText: widget.hintText ?? 'Select',
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           enabledBorder: const OutlineInputBorder(
-//             borderSide: BorderSide(color: Colors.black26),
-//           ),
-//           focusedBorder: const OutlineInputBorder(
-//             borderSide: BorderSide(color: Colors.black, width: 1.5),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tcs/widgets/app_selector_overlay.dart';
@@ -133,6 +10,8 @@ class AppSelector<T> extends StatefulWidget {
   final String Function(T) displayText;
   final String Function(T) searchText;
   final Widget Function(T) itemBuilder;
+  final bool showAbove;
+  final FocusNode? focusNode;
 
   const AppSelector({
     super.key,
@@ -143,6 +22,8 @@ class AppSelector<T> extends StatefulWidget {
     required this.displayText,
     required this.searchText,
     required this.itemBuilder,
+    this.showAbove = false,
+    this.focusNode,
   });
 
   @override
@@ -153,7 +34,7 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
   final TextEditingController controller = TextEditingController();
   final LayerLink _layerLink = LayerLink();
   final FocusNode _wrapperFocusNode = FocusNode();
-  final FocusNode _textFieldFocusNode = FocusNode();
+  late final FocusNode _textFieldFocusNode;
 
   OverlayEntry? _overlayEntry;
 
@@ -163,6 +44,7 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
   @override
   void initState() {
     super.initState();
+    _textFieldFocusNode = widget.focusNode ?? FocusNode();
 
     final item = widget.initialItem;
     if (item != null) {
@@ -241,6 +123,7 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
       context: context,
       link: _layerLink,
       onClose: _removeOverlay,
+      showAbove: widget.showAbove,
       children: List.generate(visibleItems.length, (index) {
         final item = visibleItems[index];
 
@@ -291,7 +174,9 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
     _removeOverlay();
     controller.dispose();
     _wrapperFocusNode.dispose();
-    _textFieldFocusNode.dispose();
+    if (widget.focusNode == null) {
+      _textFieldFocusNode.dispose();
+    }
     super.dispose();
   }
 

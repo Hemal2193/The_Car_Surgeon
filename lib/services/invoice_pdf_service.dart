@@ -1,13 +1,15 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show rootBundle, MethodChannel;
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:number_to_words_english/number_to_words_english.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
@@ -60,6 +62,30 @@ class InvoicePdfService {
           pw.SizedBox(height: 20),
 
           _buildTaxSummaryTable(invoice),
+
+          pw.SizedBox(height: 20),
+
+          _buildAmountInWords(invoice),
+
+          pw.SizedBox(height: 20),
+
+          pw.Table(
+            columnWidths: {
+              0: const pw.FlexColumnWidth(),
+              1: const pw.FixedColumnWidth(20),
+              2: const pw.FlexColumnWidth(),
+            },
+            children: [
+              pw.TableRow(
+                verticalAlignment: pw.TableCellVerticalAlignment.full,
+                children: [
+                  _buildBankDetails(),
+                  pw.SizedBox(),
+                  _buildSignature(),
+                ],
+              ),
+            ],
+          ),
         ],
 
         footer: (context) => _buildFooter(),
@@ -80,14 +106,34 @@ class InvoicePdfService {
   }
 
   // =====================================================
-  // SHARE PDF
+  // SHARE PDF (uses share_plus for mobile, printing for desktop)
   // =====================================================
-  static Future<void> shareInvoicePdf(Invoice invoice) async {
+  static Future<void> shareInvoicePdf(
+    Invoice invoice, {
+    bool isMobile = false,
+  }) async {
     final bytes = await generatePdfBytes(invoice);
 
-    await Printing.sharePdf(bytes: bytes, filename: '${invoice.invoiceId}.pdf');
+    if (isMobile) {
+      // Write to temp file, then share via share_plus
+      final tempDir = Directory.systemTemp;
+      final tempFile = File('${tempDir.path}/${invoice.invoiceId}.pdf');
+      await tempFile.writeAsBytes(bytes);
+
+      await Share.shareXFiles([
+        XFile(tempFile.path, mimeType: 'application/pdf'),
+      ], subject: 'Invoice ${invoice.invoiceId}');
+    } else {
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${invoice.invoiceId}.pdf',
+      );
+    }
   }
 
+  // =====================================================
+  // DOWNLOAD PDF – DESKTOP (file picker)
+  // =====================================================
   static Future<void> generateInvoicePdf(Invoice invoice) async {
     final bytes = await generatePdfBytes(invoice);
 
@@ -107,6 +153,23 @@ class InvoicePdfService {
 
     final file = File(path);
     await file.writeAsBytes(bytes);
+  }
+
+  // =====================================================
+  // DOWNLOAD PDF – MOBILE (saves to Downloads/TCS via platform channel)
+  // =====================================================
+  static const _channel = MethodChannel('com.example.tcs/download');
+
+  static Future<String?> downloadInvoicePdfMobile(Invoice invoice) async {
+    final bytes = await generatePdfBytes(invoice);
+
+    final result = await _channel.invokeMethod<String>('saveToDownloads', {
+      'fileName': '${invoice.invoiceId}.pdf',
+      'fileBytes': bytes,
+      'subFolder': 'TCS',
+    });
+
+    return result;
   }
 
   // =====================================================
@@ -677,6 +740,125 @@ class InvoicePdfService {
 
           cellAlignment: pw.Alignment.center,
           headerAlignment: pw.Alignment.center,
+        ),
+      ),
+    );
+  }
+
+  static pw.Widget _buildAmountInWords(Invoice invoice) {
+    final amountInWords = NumberToWords.convert(
+      'en',
+      invoice.grandTotal.toInt(),
+    );
+    return pw.Container(
+      width: double.infinity,
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey),
+        borderRadius: pw.BorderRadius.circular(4),
+      ),
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.all(10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text("Amount in Words"),
+            pw.Text(
+              amountInWords,
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static pw.Widget _buildBankDetails() {
+    const bankName = "The Car Surgeon";
+    const accountHolderName = "The Car Surgeon";
+    const accountNumber = "1234567890";
+    const ifscCode = "SBIN0001234";
+
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey),
+        borderRadius: pw.BorderRadius.circular(4),
+      ),
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.all(10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              "Bank Details",
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+
+            pw.SizedBox(height: 8),
+
+            pw.Table(
+              columnWidths: {
+                0: const pw.FixedColumnWidth(110), // Label
+                1: const pw.FixedColumnWidth(10), // Colon
+                2: const pw.FlexColumnWidth(), // Value
+              },
+              defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
+              children: [
+                _buildBankRow("Bank Name", bankName),
+                _buildBankRow("Account Holder", accountHolderName),
+                _buildBankRow("Account Number", accountNumber),
+                _buildBankRow("IFSC Code", ifscCode),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static pw.TableRow _buildBankRow(String label, String value) {
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Text(
+            label,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          ),
+        ),
+
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Text(
+            ":",
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          ),
+        ),
+
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Text(value),
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildSignature() {
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey),
+        borderRadius: pw.BorderRadius.circular(4),
+      ),
+      child: pw.Center(
+        child: pw.Padding(
+          padding: pw.EdgeInsets.all(10),
+          child: pw.Column(
+            children: [
+              pw.Text(
+                "Signature",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ),
     );

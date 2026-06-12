@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
+import 'package:tcs/controllers/invoice_controller.dart';
 import 'package:tcs/models/customer_model.dart';
 import 'package:tcs/screens/customers/add_customer_dialog.dart';
 import 'package:tcs/utils/responsive.dart';
@@ -293,7 +294,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 maxChildSize: 0.92,
                 shouldCloseOnMinExtent: true,
                 builder: (context, scrollController) {
-                  return AddCustomerDialog(scrollController: scrollController);
+                  return AddCustomerDialog(
+                    customer: customer,
+                    scrollController: scrollController,
+                  );
                 },
               );
             },
@@ -301,6 +305,45 @@ class _CustomersScreenState extends State<CustomersScreen> {
         },
 
         onDelete: () {
+          final vehicleCount = Get.find<VehicleController>()
+              .getVehicleCountForCustomer(customer.customerId);
+          final invoiceCount = Get.find<InvoiceController>().invoices
+              .where((i) => i.customerId == customer.customerId)
+              .length;
+
+          if (vehicleCount > 0 || invoiceCount > 0) {
+            String message = 'Cannot delete ${customer.name}: ';
+            List<String> reasons = [];
+            if (vehicleCount > 0) {
+              reasons.add('$vehicleCount vehicle(s)');
+            }
+            if (invoiceCount > 0) {
+              reasons.add('$invoiceCount invoice(s)');
+            }
+            message += 'has ${reasons.join(' and ')} attached.';
+
+            showDialog(
+              context: context,
+              builder: (_) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  title: const Text('Cannot Delete'),
+                  content: Text(message),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+            return;
+          }
+
           showDialog(
             context: context,
             builder: (_) {
@@ -365,6 +408,42 @@ class _CustomersScreenState extends State<CustomersScreen> {
             },
 
             onDelete: () {
+              final vehicleCount = Get.find<VehicleController>()
+                  .getVehicleCountForCustomer(customer.customerId);
+              final invoiceCount = Get.find<InvoiceController>().invoices
+                  .where((i) => i.customerId == customer.customerId)
+                  .length;
+
+              if (vehicleCount > 0 || invoiceCount > 0) {
+                String message = 'Cannot delete ${customer.name}: ';
+                List<String> reasons = [];
+                if (vehicleCount > 0) {
+                  reasons.add('$vehicleCount vehicle(s)');
+                }
+                if (invoiceCount > 0) {
+                  reasons.add('$invoiceCount invoice(s)');
+                }
+                message += 'has ${reasons.join(' and ')} attached.';
+
+                showDialog(
+                  context: context,
+                  builder: (_) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: const Text('Cannot Delete'),
+                      content: Text(message),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+                return;
+              }
+
               showDialog(
                 context: context,
                 builder: (dialogContext) {

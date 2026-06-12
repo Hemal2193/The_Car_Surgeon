@@ -41,6 +41,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   final TextEditingController qtyController = TextEditingController(text: "1");
   final TextEditingController rateController = TextEditingController();
+  final FocusNode _itemFocusNode = FocusNode();
 
   // Reminder fields
   final TextEditingController _reminderTitleController =
@@ -87,6 +88,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     rateController.dispose();
     _reminderTitleController.dispose();
     _reminderNotesController.dispose();
+    _itemFocusNode.dispose();
     super.dispose();
   }
 
@@ -238,6 +240,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       rateController.clear();
       _itemSelectorVersion++;
     });
+
+    // Refocus the item selector after adding
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _itemFocusNode.requestFocus();
+    });
   }
 
   void saveInvoice() async {
@@ -276,7 +283,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         invoice.vehicleId,
       );
       Get.snackbar(
+        margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+
         "Invoice Updated",
+
         "Invoice ${invoice.invoiceId} updated successfully",
         snackPosition: SnackPosition.BOTTOM,
       );
@@ -304,6 +314,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     });
 
     Get.snackbar(
+      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       "Success",
       "Invoice saved successfully",
       snackPosition: SnackPosition.BOTTOM,
@@ -543,7 +554,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
-          cButton(saveInvoice, "Save", true),
+          cButton(saveInvoice, isEditing ? "Update" : "Save", true),
         ],
       ),
     );
@@ -584,6 +595,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         const Text("Items", style: TextStyle(fontWeight: FontWeight.w600)),
         AppSelector<Item>(
           key: ValueKey('mobile_item_$_itemSelectorVersion'),
+          focusNode: _itemFocusNode,
+          showAbove: true,
           items: Get.find<ItemController>().items,
           initialItem: selectedItem,
           hintText: "Select Item",

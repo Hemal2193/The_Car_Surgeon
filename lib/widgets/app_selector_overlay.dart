@@ -6,9 +6,19 @@ class AppSelectorOverlay {
     required LayerLink link,
     required List<Widget> children,
     required VoidCallback onClose,
+    bool showAbove = false,
   }) {
     return OverlayEntry(
       builder: (context) {
+        final int itemCount = children.length;
+        final double itemHeight = 48.0;
+        final double maxHeight = 220.0;
+        final double actualHeight =
+            (itemCount * itemHeight).clamp(0, maxHeight);
+        // When showing above, offset = -(actualHeight + gap)
+        final offset =
+            showAbove ? Offset(0, -(actualHeight + 4)) : const Offset(0, 55);
+
         return Stack(
           children: [
             // ---------------- OUTSIDE TAP DETECTOR ----------------
@@ -24,13 +34,13 @@ class AppSelectorOverlay {
             CompositedTransformFollower(
               link: link,
               showWhenUnlinked: false,
-              offset: const Offset(0, 55),
+              offset: offset,
               child: Material(
                 elevation: 10,
                 color: Colors.white,
                 child: Container(
                   width: 400,
-                  constraints: const BoxConstraints(maxHeight: 220),
+                  constraints: BoxConstraints(maxHeight: actualHeight),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black12),
                   ),

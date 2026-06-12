@@ -429,39 +429,47 @@ Widget _actionButtons(Invoice invoice) {
 
       cButton(
         () async {
-          await InvoicePdfService.generateInvoicePdf(invoice);
+          try {
+            final path = await InvoicePdfService.downloadInvoicePdfMobile(
+              invoice,
+            );
+            if (path != null) {
+              Get.snackbar(
+                margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                "Downloaded",
+                "Invoice saved to Downloads/TCS/${invoice.invoiceId}.pdf",
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            }
+          } catch (e) {
+            Get.snackbar(
+              "Error",
+              "Failed to download PDF: $e",
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          }
         },
         "Download PDF",
         false,
       ),
 
-      // SizedBox(
-      //   width: double.infinity,
-      //   child: OutlinedButton(
-      //     onPressed: () async {
-      //       await InvoicePdfService.generateInvoicePdf(invoice);
-      //     },
-      //     child: const Text("Download PDF"),
-      //   ),
-      // ),
       const SizedBox(height: 10),
 
       cButton(
         () async {
-          await InvoicePdfService.shareInvoicePdf(invoice);
+          try {
+            await InvoicePdfService.shareInvoicePdf(invoice, isMobile: true);
+          } catch (e) {
+            Get.snackbar(
+              "Error",
+              "Failed to share PDF: $e",
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          }
         },
         "Share PDF",
         false,
       ),
-      // SizedBox(
-      //   width: double.infinity,
-      //   child: OutlinedButton(
-      //     onPressed: () async {
-      //       await InvoicePdfService.shareInvoicePdf(invoice);
-      //     },
-      //     child: const Text("Share PDF"),
-      //   ),
-      // ),
     ],
   );
 }
@@ -474,21 +482,6 @@ Widget _pdfContainer(Invoice invoice) {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: InvoicePdfPreview(invoice: invoice),
-      // child: PdfPreview(
-      //   previewPageMargin: EdgeInsets.zero,
-      //   build: (format) => InvoicePdfService.generatePdfBytes(invoice),
-
-      //   maxPageWidth: double.infinity,
-
-      //   canChangeOrientation: false,
-      //   canChangePageFormat: false,
-      //   allowPrinting: false,
-      //   allowSharing: false,
-
-      //   pdfPreviewPageDecoration: const BoxDecoration(color: Colors.white),
-
-      //   initialPageFormat: PdfPageFormat.a4,
-      // ),
     ),
   );
 }

@@ -303,7 +303,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                 maxChildSize: 0.92,
                 shouldCloseOnMinExtent: true,
                 builder: (context, scrollController) {
-                  return AddItemDialog(scrollController: scrollController);
+                  return AddItemDialog(item: item, scrollController: scrollController);
                 },
               );
             },

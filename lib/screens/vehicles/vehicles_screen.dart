@@ -304,7 +304,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                 maxChildSize: 0.92,
                 shouldCloseOnMinExtent: true,
                 builder: (context, scrollController) {
-                  return AddVehicleDialog(scrollController: scrollController);
+                  return AddVehicleDialog(
+                    vehicle: vehicle,
+                    scrollController: scrollController,
+                  );
                 },
               );
             },

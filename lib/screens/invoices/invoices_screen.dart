@@ -43,7 +43,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return "$day-$month-$year";
   }
 
-  bool matchesSearch(inv, CustomerController cc) {
+  bool matchesSearch(Invoice inv, CustomerController cc) {
     final q = searchQuery.toLowerCase();
 
     final customerName =
