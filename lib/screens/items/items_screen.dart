@@ -290,11 +290,22 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
       trailing: AppPopupMenu(
         onEdit: () {
-          showDialog(
+          showModalBottomSheet(
             context: context,
-
+            isScrollControlled: true,
+            isDismissible: true,
+            backgroundColor: Colors.transparent,
             builder: (_) {
-              return AddItemDialog(item: item);
+              return DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.80,
+                minChildSize: 0.80,
+                maxChildSize: 0.92,
+                shouldCloseOnMinExtent: true,
+                builder: (context, scrollController) {
+                  return AddItemDialog(scrollController: scrollController);
+                },
+              );
             },
           );
         },

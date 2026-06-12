@@ -248,7 +248,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           padding: EdgeInsets.only(bottom: 150),
 
           itemCount: vehicles.length,
-        
+
           itemBuilder: (context, index) {
             return _buildVehicleTile(vehicles[vehicles.length - index - 1]);
           },
@@ -291,11 +291,22 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
       trailing: AppPopupMenu(
         onEdit: () {
-          showDialog(
+          showModalBottomSheet(
             context: context,
-
+            isScrollControlled: true,
+            isDismissible: true,
+            backgroundColor: Colors.transparent,
             builder: (_) {
-              return AddVehicleDialog(vehicle: vehicle);
+              return DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.80,
+                minChildSize: 0.80,
+                maxChildSize: 0.92,
+                shouldCloseOnMinExtent: true,
+                builder: (context, scrollController) {
+                  return AddVehicleDialog(scrollController: scrollController);
+                },
+              );
             },
           );
         },

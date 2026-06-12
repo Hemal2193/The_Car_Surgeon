@@ -280,10 +280,22 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
       trailing: AppPopupMenu(
         onEdit: () {
-          showDialog(
+          showModalBottomSheet(
             context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            backgroundColor: Colors.transparent,
             builder: (_) {
-              return AddCustomerDialog(customer: customer);
+              return DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.80,
+                minChildSize: 0.80,
+                maxChildSize: 0.92,
+                shouldCloseOnMinExtent: true,
+                builder: (context, scrollController) {
+                  return AddCustomerDialog(scrollController: scrollController);
+                },
+              );
             },
           );
         },
