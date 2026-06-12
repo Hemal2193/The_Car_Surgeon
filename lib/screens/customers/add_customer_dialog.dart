@@ -33,6 +33,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
   final panController = TextEditingController();
 
+  String? _nameError;
+  String? _contact1Error;
+
   bool get isEditing => widget.customer != null;
 
   @override
@@ -63,13 +66,54 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     super.dispose();
   }
 
+  /// Strip +91 or +91  prefix from contact number
+  String _cleanContact(String raw) {
+    var cleaned = raw.trim();
+    cleaned = cleaned.replaceFirst(RegExp(r'^\+91[\s\-]?'), '');
+    cleaned = cleaned.replaceFirst(RegExp(r'^0+'), '');
+    return cleaned;
+  }
+
   void saveCustomer() async {
-    if (nameController.text.trim().isEmpty ||
-        contact1Controller.text.trim().isEmpty) {
-      return;
+    // Reset errors
+    setState(() {
+      _nameError = null;
+      _contact1Error = null;
+    });
+
+    bool hasError = false;
+
+    // Validate name
+    if (nameController.text.trim().isEmpty) {
+      setState(() {
+        _nameError = 'Please enter customer name';
+      });
+      hasError = true;
     }
 
+    // Validate contact1
+    final rawContact = contact1Controller.text.trim();
+    if (rawContact.isEmpty) {
+      setState(() {
+        _contact1Error = 'Please enter contact number';
+      });
+      hasError = true;
+    } else {
+      final cleaned = _cleanContact(rawContact);
+      if (cleaned.length != 10 || !RegExp(r'^\d{10}$').hasMatch(cleaned)) {
+        setState(() {
+          _contact1Error = 'Contact number should be 10 digits';
+        });
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
+
     final customerController = Get.find<CustomerController>();
+
+    final cleanedContact = _cleanContact(contact1Controller.text);
+    final cleanedContact2 = _cleanContact(contact2Controller.text);
 
     final customer = Customer(
       customerId:
@@ -77,9 +121,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
       name: nameController.text.trim(),
 
-      contact1: contact1Controller.text.trim(),
+      contact1: cleanedContact,
 
-      contact2: contact2Controller.text.trim(),
+      contact2: cleanedContact2,
 
       address: addressController.text.trim(),
 
@@ -144,6 +188,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                 controller: nameController,
               ),
 
+              if (_nameError != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _nameError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ],
+
               const SizedBox(height: 16),
 
               Row(
@@ -164,6 +216,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                           keyboardType: TextInputType.phone,
                           controller: contact1Controller,
                         ),
+
+                        if (_contact1Error != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _contact1Error!,
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -308,7 +368,6 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
 
             _handleBar(),
 
-            // const SizedBox(height: 12),
             Expanded(
               child: SingleChildScrollView(
                 controller: widget.scrollController,
@@ -324,6 +383,13 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       nameController,
                       hint: "Enter customer name",
                     ),
+                    if (_nameError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _nameError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
                     _field(
@@ -332,6 +398,13 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       hint: "Enter contact number",
                       keyboard: TextInputType.phone,
                     ),
+                    if (_contact1Error != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _contact1Error!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
 
                     const SizedBox(height: 14),
 

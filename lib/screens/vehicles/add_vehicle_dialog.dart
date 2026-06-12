@@ -49,6 +49,9 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   final customerSearchController = TextEditingController();
   List<Customer> filteredCustomers = [];
 
+  String? _customerError;
+  String? _registrationError;
+
   bool get isEditing => widget.vehicle != null;
 
   void filterCustomers(String query) {
@@ -152,18 +155,41 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
                 searchText: (c) => '${c.name} ${c.customerId}',
                 itemBuilder: (c) => Text(c.name),
                 onSelected: (customer) {
-                  selectedCustomer = customer;
+                  setState(() {
+                    selectedCustomer = customer;
+                    _customerError = null;
+                  });
                 },
               ),
+
+              if (_customerError != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _customerError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ],
 
               const SizedBox(height: 16),
 
               Row(
                 children: [
                   Expanded(
-                    child: AppTextField(
-                      hintText: 'Registration Number *',
-                      controller: registrationController,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          hintText: 'Registration Number *',
+                          controller: registrationController,
+                        ),
+                        if (_registrationError != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _registrationError!,
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
 
@@ -296,6 +322,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
 
                     _label("Customer *"),
                     AppSelector<Customer>(
+                      showAbove: true,
                       items: Get.find<CustomerController>().customers,
                       initialItem: selectedCustomer,
                       hintText: "Select Customer",
@@ -303,13 +330,30 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
                       searchText: (c) => "${c.name} ${c.customerId}",
                       itemBuilder: (c) => Text(c.name),
                       onSelected: (customer) {
-                        selectedCustomer = customer;
+                        setState(() {
+                          selectedCustomer = customer;
+                          _customerError = null;
+                        });
                       },
                     ),
+                    if (_customerError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _customerError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
 
                     const SizedBox(height: 14),
 
                     _field("Registration Number *", registrationController),
+                    if (_registrationError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _registrationError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
                     _label("Fuel Type"),
@@ -416,15 +460,31 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   }
 
   Future<void> saveVehicle() async {
+    // Reset errors
+    setState(() {
+      _customerError = null;
+      _registrationError = null;
+    });
+
+    bool hasError = false;
+
+    // Validate customer
     if (selectedCustomer == null) {
-      return;
+      setState(() {
+        _customerError = 'Please select a customer';
+      });
+      hasError = true;
     }
 
-    if (registrationController.text.trim().isEmpty ||
-        makeController.text.trim().isEmpty ||
-        modelController.text.trim().isEmpty) {
-      return;
+    // Validate registration number
+    if (registrationController.text.trim().isEmpty) {
+      setState(() {
+        _registrationError = 'Please enter registration number';
+      });
+      hasError = true;
     }
+
+    if (hasError) return;
 
     final vehicleController = Get.find<VehicleController>();
 

@@ -623,6 +623,8 @@ class VehicleDetailScreen extends StatelessWidget {
 
           _mobileInfoTile(Icons.model_training, "Model", vehicle.model),
 
+          _mobileInfoTile(Icons.speed, "Odometer", vehicle.odoMeter ?? ''),
+
           _mobileInfoTile(Icons.local_gas_station, "Fuel", vehicle.fuelType),
 
           _mobileInfoTile(

@@ -30,14 +30,14 @@ class _AddItemDialogState extends State<AddItemDialog> {
   String selectedType = 'Product';
   String selectedGst = '18%';
 
-  // =====================================================
-  // QTY TYPE SYSTEM (UPDATED)
-  // =====================================================
   final List<String> qtyTypes = ['Pcs', 'Litre'];
   String selectedQtyType = 'Pcs';
 
   final LayerLink _gstLink = LayerLink();
   OverlayEntry? _gstOverlay;
+
+  String? _nameError;
+  String? _priceError;
 
   bool get isEditing => widget.item != null;
 
@@ -65,9 +65,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
     super.dispose();
   }
 
-  // =====================================================
-  // GST DROPDOWN
-  // =====================================================
   void _toggleGstDropdown() {
     if (_gstOverlay != null) {
       _removeGstOverlay();
@@ -146,9 +143,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
     _gstOverlay = null;
   }
 
-  // =====================================================
-  // ADD CUSTOM QTY TYPE
-  // =====================================================
   void _showAddUnitDialog() {
     final controller = TextEditingController();
 
@@ -187,9 +181,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
   @override
   Widget build(BuildContext context) {
     if (Responsive.isDesktop(context)) {
@@ -227,6 +218,14 @@ class _AddItemDialogState extends State<AddItemDialog> {
               controller: nameController,
             ),
 
+            if (_nameError != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                _nameError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ],
+
             const SizedBox(height: 14),
 
             const Text('Type *', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -248,7 +247,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       decoration: BoxDecoration(
                         color: selected ? Colors.black : Colors.white,
                         border: Border.all(color: Colors.black26),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         t,
@@ -264,9 +263,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
             const SizedBox(height: 14),
 
-            // =====================================================
-            // HSN + GST
-            // =====================================================
             Row(
               children: [
                 Expanded(
@@ -324,9 +320,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
             const SizedBox(height: 14),
 
-            // =====================================================
-            // QTY TYPE (UPDATED)
-            // =====================================================
             const Text(
               'Qty Type',
               style: TextStyle(fontWeight: FontWeight.w600),
@@ -384,10 +377,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
             const Text('Price', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             AppTextField(
-              hintText: 'Optional price',
+              hintText: 'Enter price',
               controller: priceController,
               keyboardType: TextInputType.number,
             ),
+
+            if (_priceError != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                _priceError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ],
 
             const SizedBox(height: 22),
 
@@ -430,6 +431,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     const SizedBox(height: 20),
 
                     _field("Item Name *", nameController),
+                    if (_nameError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _nameError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
                     _label("Type"),
@@ -482,6 +490,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       priceController,
                       keyboard: TextInputType.number,
                     ),
+                    if (_priceError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _priceError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
@@ -552,7 +567,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
         decoration: BoxDecoration(
           color: selected ? Colors.black : Colors.white,
           border: Border.all(color: Colors.black26),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           text,
@@ -603,18 +618,45 @@ class _AddItemDialogState extends State<AddItemDialog> {
     );
   }
 
-  // =====================================================
-  // SAVE ITEM
-  // =====================================================
   void _saveItem() {
+    // Reset errors
+    setState(() {
+      _nameError = null;
+      _priceError = null;
+    });
+
+    bool hasError = false;
+
+    // Validate name
     final name = nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() {
+        _nameError = 'Please enter item name';
+      });
+      hasError = true;
+    }
+
+    // Validate price
+    final priceText = priceController.text.trim();
+    double? price;
+    if (priceText.isEmpty) {
+      setState(() {
+        _priceError = 'Please enter price';
+      });
+      hasError = true;
+    } else {
+      price = double.tryParse(priceText);
+      if (price == null || price < 0) {
+        setState(() {
+          _priceError = 'Please enter a valid price';
+        });
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
+
     final gstValue = double.tryParse(selectedGst.replaceAll('%', '')) ?? 0;
-
-    final price = priceController.text.trim().isEmpty
-        ? null
-        : double.tryParse(priceController.text.trim());
-
-    if (name.isEmpty) return;
 
     final item = Item(
       itemId: widget.item?.itemId ?? IdGenerator.generateItemId(),
@@ -625,9 +667,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
           : hsnController.text.trim(),
       gst: gstValue,
       price: price,
-
-      // If model supports:
-      // qtyType: selectedQtyType,
     );
 
     if (isEditing) {
