@@ -43,6 +43,20 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   double totalRevenue = 0;
   @override
   Widget build(BuildContext context) {
+    return GetBuilder<CustomerController>(
+      builder: (_) {
+        return GetBuilder<VehicleController>(
+          builder: (_) {
+            return GetBuilder<InvoiceController>(
+              builder: (_) => _buildReactiveContent(context),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildReactiveContent(BuildContext context) {
     customerController = Get.find<CustomerController>();
     vehicleController = Get.find<VehicleController>();
     invoiceController = Get.find<InvoiceController>();

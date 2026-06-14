@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../database/hive_boxes.dart';
 import '../models/invoice_model.dart';
 import '../models/sync_status.dart';
+import '../services/invoice_pdf_cache.dart';
 import '../services/supabase_sync_service.dart';
 
 class InvoiceController extends GetxController {
@@ -34,6 +35,7 @@ class InvoiceController extends GetxController {
 
     await invoiceBox.put(invoice.invoiceId, invoice);
 
+    invalidatePdfCache(invoice.invoiceId);
     update();
     Get.find<SupabaseSyncService>().syncInvoices();
   }
@@ -44,6 +46,7 @@ class InvoiceController extends GetxController {
 
     await invoiceBox.put(invoice.invoiceId, invoice);
 
+    invalidatePdfCache(invoice.invoiceId);
     update();
     Get.find<SupabaseSyncService>().syncInvoices();
   }
@@ -59,6 +62,7 @@ class InvoiceController extends GetxController {
 
     await invoiceBox.put(id, invoice);
 
+    invalidatePdfCache(id);
     update();
     Get.find<SupabaseSyncService>().syncInvoices();
   }
@@ -73,6 +77,7 @@ class InvoiceController extends GetxController {
 
     await invoiceBox.put(invoiceId, invoice);
 
+    invalidatePdfCache(invoiceId);
     update();
   }
 
@@ -85,6 +90,7 @@ class InvoiceController extends GetxController {
 
       await invoiceBox.put(remoteInvoice.invoiceId, remoteInvoice);
 
+      invalidatePdfCache(remoteInvoice.invoiceId);
       update();
     }
   }

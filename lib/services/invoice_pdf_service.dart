@@ -1,8 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/services.dart' show rootBundle, MethodChannel;
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:get/get.dart';
 import 'package:number_to_words_english/number_to_words_english.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:pdf/pdf.dart';
@@ -469,7 +468,7 @@ class InvoicePdfService {
                               ),
                             ),
                             pw.Text(
-                              vehicle!.registrationNumber,
+                              vehicle?.registrationNumber ?? "-",
                               style: pw.TextStyle(fontSize: 10),
                             ),
                           ],
@@ -485,7 +484,7 @@ class InvoicePdfService {
                               ),
                             ),
                             pw.Text(
-                              "${vehicle.odoMeter ?? "-"} Km",
+                              "${vehicle?.odoMeter ?? "-"} Km",
                               style: pw.TextStyle(fontSize: 10),
                             ),
                           ],
@@ -502,7 +501,9 @@ class InvoicePdfService {
                               ),
                             ),
                             pw.Text(
-                              "${vehicle.make} ${vehicle.model}",
+                              vehicle == null
+                                  ? "-"
+                                  : "${vehicle.make} ${vehicle.model}",
                               style: pw.TextStyle(fontSize: 10),
                             ),
                           ],

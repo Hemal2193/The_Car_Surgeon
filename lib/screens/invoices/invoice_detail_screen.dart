@@ -18,6 +18,20 @@ class InvoiceDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return GetBuilder<InvoiceController>(
+      builder: (_) {
+        return GetBuilder<CustomerController>(
+          builder: (_) {
+            return GetBuilder<VehicleController>(
+              builder: (_) => _buildReactiveContent(context),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildReactiveContent(BuildContext context) {
     final customerCtrl = Get.find<CustomerController>();
     final vehicleCtrl = Get.find<VehicleController>();
 
@@ -63,7 +77,9 @@ class InvoiceDetailScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border(right: BorderSide(color: Colors.grey.shade300)),
+                    border: Border(
+                      right: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,7 +114,10 @@ class InvoiceDetailScreen extends StatelessWidget {
                         ],
                       ),
                       _infoField("Customer", customer?.name ?? "Unknown"),
-                      _infoField("Vehicle", vehicle?.registrationNumber ?? "Unknown"),
+                      _infoField(
+                        "Vehicle",
+                        vehicle?.registrationNumber ?? "Unknown",
+                      ),
                       const SizedBox(height: 25),
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -109,7 +128,10 @@ class InvoiceDetailScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("Summary", style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Text(
+                              "Summary",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             const SizedBox(height: 10),
                             _summaryRow("Subtotal", subtotal),
                             _summaryRow("Tax", totalTax),
@@ -151,10 +173,14 @@ class InvoiceDetailScreen extends StatelessWidget {
                           children: [
                             const Text(
                               "Invoice Items",
-                              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             cButton(
-                              () => InvoicePdfService.generateInvoicePdf(invoice),
+                              () =>
+                                  InvoicePdfService.generateInvoicePdf(invoice),
                               'Download PDF',
                               true,
                             ),
@@ -189,9 +215,15 @@ class InvoiceDetailScreen extends StatelessWidget {
                                       DataCell(Text("${item.qty}")),
                                       DataCell(Text(item.rate.toString())),
                                       DataCell(
-                                        Text("${item.taxAmount.toStringAsFixed(2)} (${item.taxPercent}%)"),
+                                        Text(
+                                          "${item.taxAmount.toStringAsFixed(2)} (${item.taxPercent}%)",
+                                        ),
                                       ),
-                                      DataCell(Text(item.totalAmount.toStringAsFixed(2))),
+                                      DataCell(
+                                        Text(
+                                          item.totalAmount.toStringAsFixed(2),
+                                        ),
+                                      ),
                                     ],
                                   );
                                 }),
@@ -217,9 +249,15 @@ class InvoiceDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -231,8 +269,18 @@ class InvoiceDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text("Rs. ${value.toStringAsFixed(2)}", style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "Rs. ${value.toStringAsFixed(2)}",
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

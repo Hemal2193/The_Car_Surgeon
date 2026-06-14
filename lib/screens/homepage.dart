@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_navigation/src/extension_navigation.dart';
+import 'package:get/get.dart';
+import 'package:tcs/controllers/app_navigation_controller.dart';
 import 'package:tcs/screens/customers/add_customer_dialog.dart';
 import 'package:tcs/screens/customers/customers_screen.dart';
 import 'package:tcs/screens/dashboard/dashboard_screen.dart';
@@ -15,17 +15,13 @@ import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_sidebar.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
+  AppNavigationController get navigationController =>
+      Get.find<AppNavigationController>();
 
-class _HomePageState extends State<HomePage> {
-  AppPage currentPage = AppPage.dashboard;
-
-  Widget getCurrentScreen() {
+  Widget getCurrentScreen(AppPage currentPage) {
     switch (currentPage) {
       case AppPage.dashboard:
         return const DashboardScreen();
@@ -46,135 +42,143 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (Responsive.isDesktop(context)) {
-      return Scaffold(
-        body: Row(
-          children: [
-            AppSidebar(
-              currentPage: currentPage,
-              onPageSelected: (page) {
-                setState(() {
-                  currentPage = page;
-                });
-              },
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  const AppTitleBar(),
-                  Expanded(
-                    child: Container(
-                      color: Colors.white,
-                      child: getCurrentScreen(),
+    return Obx(() {
+      final currentPage = navigationController.currentPage.value;
+
+      if (Responsive.isDesktop(context)) {
+        return Scaffold(
+          body: Row(
+            children: [
+              AppSidebar(
+                currentPage: currentPage,
+                onPageSelected: navigationController.selectPage,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    const AppTitleBar(),
+                    Expanded(
+                      child: Container(
+                        color: Colors.white,
+                        child: getCurrentScreen(currentPage),
+                      ),
                     ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      //-------------------------------
+      //------Mobile-------------------
+      //-------------------------------
+      return Scaffold(
+        backgroundColor: Colors.white,
+
+        floatingActionButton: _buildCurrentFab(context, currentPage),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+        body: Stack(
+          children: [
+            // Main content
+            Positioned.fill(
+              child: SafeArea(
+                bottom: false,
+                child: getCurrentScreen(currentPage),
+              ),
+            ),
+
+            // Floating navbar
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              child: Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      // ignore: deprecated_member_use
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Row(
+                    children: [
+                      _navItem(
+                        currentPage: currentPage,
+                        page: AppPage.dashboard,
+                        icon: Icons.dashboard_outlined,
+                        selectedIcon: Icons.dashboard,
+                        label: 'Dashboard',
+                      ),
+                      _navItem(
+                        currentPage: currentPage,
+                        page: AppPage.customers,
+                        icon: Icons.people_outline,
+                        selectedIcon: Icons.people,
+                        label: 'Customers',
+                      ),
+                      _navItem(
+                        currentPage: currentPage,
+                        page: AppPage.vehicles,
+                        icon: Icons.directions_car_outlined,
+                        selectedIcon: Icons.directions_car,
+                        label: 'Vehicles',
+                      ),
+                      _navItem(
+                        currentPage: currentPage,
+                        page: AppPage.invoices,
+                        icon: Icons.receipt_long_outlined,
+                        selectedIcon: Icons.receipt_long,
+                        label: 'Invoices',
+                      ),
+                      _navItem(
+                        currentPage: currentPage,
+                        page: AppPage.items,
+                        icon: Icons.inventory_2_outlined,
+                        selectedIcon: Icons.inventory_2,
+                        label: 'Items',
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
         ),
       );
-    }
-
-    //-------------------------------
-    //------Mobile-------------------
-    //-------------------------------
-    return Scaffold(
-      backgroundColor: Colors.white,
-
-      floatingActionButton: _buildCurrentFab(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
-      body: Stack(
-        children: [
-          // Main content
-          Positioned.fill(
-            child: SafeArea(bottom: false, child: getCurrentScreen()),
-          ),
-
-          // Floating navbar
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 16,
-            child: Container(
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    // ignore: deprecated_member_use
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: Row(
-                  children: [
-                    _navItem(
-                      page: AppPage.dashboard,
-                      icon: Icons.dashboard_outlined,
-                      selectedIcon: Icons.dashboard,
-                      label: 'Dashboard',
-                    ),
-                    _navItem(
-                      page: AppPage.customers,
-                      icon: Icons.people_outline,
-                      selectedIcon: Icons.people,
-                      label: 'Customers',
-                    ),
-                    _navItem(
-                      page: AppPage.vehicles,
-                      icon: Icons.directions_car_outlined,
-                      selectedIcon: Icons.directions_car,
-                      label: 'Vehicles',
-                    ),
-                    _navItem(
-                      page: AppPage.invoices,
-                      icon: Icons.receipt_long_outlined,
-                      selectedIcon: Icons.receipt_long,
-                      label: 'Invoices',
-                    ),
-                    _navItem(
-                      page: AppPage.items,
-                      icon: Icons.inventory_2_outlined,
-                      selectedIcon: Icons.inventory_2,
-                      label: 'Items',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    });
   }
 
-  Widget? _buildCurrentFab() {
+  Widget? _buildCurrentFab(BuildContext context, AppPage currentPage) {
     switch (currentPage) {
       case AppPage.customers:
-        return _customerFab();
+        return _customerFab(context);
 
       case AppPage.vehicles:
-        return _vehicleFab();
+        return _vehicleFab(context);
 
       case AppPage.invoices:
         return _invoiceFab();
 
       case AppPage.items:
-        return _itemFab();
+        return _itemFab(context);
 
       default:
         return null;
     }
   }
 
-  Widget _customerFab() {
+  Widget _customerFab(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
@@ -206,7 +210,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _vehicleFab() {
+  Widget _vehicleFab(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
@@ -253,7 +257,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _itemFab() {
+  Widget _itemFab(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
@@ -286,6 +290,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _navItem({
+    required AppPage currentPage,
     required AppPage page,
     required IconData icon,
     required IconData selectedIcon,
@@ -296,11 +301,7 @@ class _HomePageState extends State<HomePage> {
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          setState(() {
-            currentPage = page;
-          });
-        },
+        onTap: () => navigationController.selectPage(page),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(

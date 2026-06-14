@@ -87,7 +87,7 @@ class CustomerController extends GetxController {
 
       await customerBox.put(remoteCustomer.customerId, remoteCustomer);
 
-      update();
+      _refreshCacheAndUI();
     }
   }
 

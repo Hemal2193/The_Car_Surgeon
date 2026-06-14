@@ -68,193 +68,196 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
         (v) => v.vehicleId == invoice.vehicleId,
       );
 
-      final Reminder? reminder = Get.find<ReminderController>()
-          .getReminderByInvoiceId(invoice.invoiceId);
+      return GetBuilder<ReminderController>(
+        builder: (reminderCtrl) {
+          final Reminder? reminder = reminderCtrl.getReminderByInvoiceId(
+            invoice.invoiceId,
+          );
 
-      double subtotal = 0;
-      double totalTax = 0;
+          double subtotal = 0;
+          double totalTax = 0;
 
-      for (var item in invoice.items) {
-        subtotal += item.qty * item.rate;
-        totalTax += item.taxAmount;
-      }
+          for (var item in invoice.items) {
+            subtotal += item.qty * item.rate;
+            totalTax += item.taxAmount;
+          }
 
-      final grandTotal = subtotal + totalTax;
+          final grandTotal = subtotal + totalTax;
 
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            const AppTitleBar(),
-            Expanded(
-              child: Row(
-                children: [
-                  // =====================================================
-                  // LEFT PANEL
-                  // =====================================================
-                  Container(
-                    width: 320,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        right: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: Column(
+              children: [
+                const AppTitleBar(),
+                Expanded(
+                  child: Row(
+                    children: [
+                      // =====================================================
+                      // LEFT PANEL
+                      // =====================================================
+                      Container(
+                        width: 320,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            right: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back),
-                              onPressed: () => Get.back(),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              "Invoice Preview",
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 25),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _infoField(
-                                "Invoice ID",
-                                invoice.invoiceId,
-                              ),
-                            ),
-                            Expanded(
-                              child: _infoField(
-                                "Date",
-                                "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
-                                    "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
-                                    "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _infoField(
-                                "Customer",
-                                customer?.name ?? "Unknown",
-                              ),
-                            ),
-                            Expanded(
-                              child: _infoField(
-                                "Due Date",
-                                "${reminder?.dueDate.day.toString().padLeft(2, '0')}-"
-                                    "${reminder?.dueDate.month.toString().padLeft(2, '0')}-"
-                                    "${(reminder!.dueDate.year % 100).toString().padLeft(2, '0')}",
-                              ),
-                            ),
-                          ],
-                        ),
-                        _infoField(
-                          "Vehicle",
-                          vehicle?.registrationNumber ?? "Unknown",
-                        ),
-                        const SizedBox(height: 25),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            children: [
-                              _summaryRow("Subtotal", subtotal),
-                              _summaryRow("Tax", totalTax),
-                              const Divider(),
-                              _summaryRow(
-                                "Grand Total",
-                                grandTotal,
-                                bold: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        SizedBox(
-                          width: double.infinity,
-                          child: cButton(
-                            () {
-                              Get.to(
-                                () => CreateInvoiceScreen(invoice: invoice),
-                              );
-                            },
-                            'Edit Invoice',
-                            true,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: cButton(
-                            () async {
-                              await InvoicePdfService.generateInvoicePdf(
-                                invoice,
-                              );
-                            },
-                            'Download PDF',
-                            false,
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: cButton(
-                            () async {
-                              final path =
-                                  await InvoicePdfService.shareInvoiceViaWhatsApp(
-                                    invoice,
-                                    customer,
-                                  );
-                              if (path != null && context.mounted) {
-                                Get.snackbar(
-                                  'WhatsApp',
-                                  'PDF copied. Press Ctrl + V in WhatsApp.',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  duration: const Duration(seconds: 6),
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 20,
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back),
+                                  onPressed: () => Get.back(),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  "Invoice Preview",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                );
-                              }
-                            },
-                            'Share via WhatsApp',
-                            false,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 25),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _infoField(
+                                    "Invoice ID",
+                                    invoice.invoiceId,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _infoField(
+                                    "Date",
+                                    "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
+                                        "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
+                                        "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _infoField(
+                                    "Customer",
+                                    customer?.name ?? "Unknown",
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _infoField(
+                                    "Due Date",
+                                    _formatShortDate(reminder?.dueDate),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            _infoField(
+                              "Vehicle",
+                              vehicle?.registrationNumber ?? "Unknown",
+                            ),
+                            const SizedBox(height: 25),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                children: [
+                                  _summaryRow("Subtotal", subtotal),
+                                  _summaryRow("Tax", totalTax),
+                                  const Divider(),
+                                  _summaryRow(
+                                    "Grand Total",
+                                    grandTotal,
+                                    bold: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            SizedBox(
+                              width: double.infinity,
+                              child: cButton(
+                                () {
+                                  Get.to(
+                                    () => CreateInvoiceScreen(invoice: invoice),
+                                  );
+                                },
+                                'Edit Invoice',
+                                true,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: cButton(
+                                () async {
+                                  await InvoicePdfService.generateInvoicePdf(
+                                    invoice,
+                                  );
+                                },
+                                'Download PDF',
+                                false,
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: cButton(
+                                () async {
+                                  final path =
+                                      await InvoicePdfService.shareInvoiceViaWhatsApp(
+                                        invoice,
+                                        customer,
+                                      );
+                                  if (path != null && context.mounted) {
+                                    Get.snackbar(
+                                      'WhatsApp',
+                                      'PDF copied. Press Ctrl + V in WhatsApp.',
+                                      snackPosition: SnackPosition.BOTTOM,
+                                      duration: const Duration(seconds: 6),
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 20,
+                                      ),
+                                    );
+                                  }
+                                },
+                                'Share via WhatsApp',
+                                false,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // =====================================================
+                      // RIGHT PANEL
+                      // =====================================================
+                      Expanded(
+                        child: Container(
+                          color: Colors.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: InvoicePdfPreview(invoice: invoice),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  // =====================================================
-                  // RIGHT PANEL
-                  // =====================================================
-                  Expanded(
-                    child: Container(
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: InvoicePdfPreview(invoice: invoice),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     },
   );
@@ -286,73 +289,90 @@ Widget _buildMobileInvoicePreview(
         (v) => v.vehicleId == invoice.vehicleId,
       );
 
-      final Reminder? reminder = Get.find<ReminderController>()
-          .getReminderByInvoiceId(invoice.invoiceId);
+      return GetBuilder<ReminderController>(
+        builder: (reminderCtrl) {
+          final Reminder? reminder = reminderCtrl.getReminderByInvoiceId(
+            invoice.invoiceId,
+          );
 
-      double subtotal = 0;
-      double totalTax = 0;
+          double subtotal = 0;
+          double totalTax = 0;
 
-      for (var item in invoice.items) {
-        subtotal += item.qty * item.rate;
-        totalTax += item.taxAmount;
-      }
+          for (var item in invoice.items) {
+            subtotal += item.qty * item.rate;
+            totalTax += item.taxAmount;
+          }
 
-      final grandTotal = subtotal + totalTax;
+          final grandTotal = subtotal + totalTax;
 
-      return Scaffold(
-        backgroundColor: Colors.white,
+          return Scaffold(
+            backgroundColor: Colors.white,
 
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Get.back(),
-          ),
-          title: const Text(
-            "Invoice Preview",
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-
-        body: Obx(
-          () => SingleChildScrollView(
-            physics: isInteractingWithPdf.value
-                ? const NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _invoiceHeaderCard(invoice),
-
-                const SizedBox(height: 15),
-
-                _quickInfoCard(customer, vehicle, reminder, invoice),
-
-                const SizedBox(height: 15),
-
-                Listener(
-                  onPointerDown: (_) => isInteractingWithPdf.value = true,
-                  onPointerUp: (_) => isInteractingWithPdf.value = false,
-                  onPointerCancel: (_) => isInteractingWithPdf.value = false,
-                  child: _pdfContainer(invoice),
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Get.back(),
+              ),
+              title: const Text(
+                "Invoice Preview",
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
                 ),
-
-                const SizedBox(height: 20),
-
-                _financialSummaryCard(subtotal, totalTax, grandTotal),
-
-                const SizedBox(height: 15),
-
-                _actionButtons(invoice),
-              ],
+              ),
             ),
-          ),
-        ),
+
+            body: Obx(
+              () => SingleChildScrollView(
+                physics: isInteractingWithPdf.value
+                    ? const NeverScrollableScrollPhysics()
+                    : const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _invoiceHeaderCard(invoice),
+
+                    const SizedBox(height: 15),
+
+                    _quickInfoCard(customer, vehicle, reminder, invoice),
+
+                    const SizedBox(height: 15),
+
+                    Listener(
+                      onPointerDown: (_) => isInteractingWithPdf.value = true,
+                      onPointerUp: (_) => isInteractingWithPdf.value = false,
+                      onPointerCancel: (_) =>
+                          isInteractingWithPdf.value = false,
+                      child: _pdfContainer(invoice),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _financialSummaryCard(subtotal, totalTax, grandTotal),
+
+                    const SizedBox(height: 15),
+
+                    _actionButtons(invoice),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       );
     },
   );
+}
+
+String _formatShortDate(DateTime? date) {
+  if (date == null) return "-";
+
+  return "${date.day.toString().padLeft(2, '0')}-"
+      "${date.month.toString().padLeft(2, '0')}-"
+      "${(date.year % 100).toString().padLeft(2, '0')}";
 }
 
 Widget _invoiceHeaderCard(Invoice invoice) {

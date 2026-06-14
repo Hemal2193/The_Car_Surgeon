@@ -364,7 +364,7 @@ class SupabaseSyncService {
     startRealtimeSync();
     syncAll();
 
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+    _timer = Timer.periodic(const Duration(minutes: 2), (_) {
       syncAll();
     });
   }

@@ -10,6 +10,7 @@ import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'controllers/customer_controller.dart';
+import 'controllers/app_navigation_controller.dart';
 import 'controllers/invoice_controller.dart';
 import 'controllers/item_controller.dart';
 import 'controllers/reminder_controller.dart';
@@ -31,7 +32,7 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: 'https://korzmnwwxywxqybyjiux.supabase.co',
-    
+
     publishableKey: 'sb_publishable_jKGuzcvKNbe0hbC7qsotng_RhqAMxLW',
   );
 
@@ -95,6 +96,7 @@ Future<void> main() async {
   await IdResolver.seedAllGenerators();
 
   // CONTROLLERS (register BEFORE sync service so Get.find works)
+  Get.put(AppNavigationController(), permanent: true);
   final customerController = Get.put(CustomerController(), permanent: true);
   Get.put(ItemController(), permanent: true);
   Get.put(VehicleController(), permanent: true);

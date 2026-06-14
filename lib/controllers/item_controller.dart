@@ -6,6 +6,7 @@ import '../database/hive_boxes.dart';
 import '../models/item_model.dart';
 import '../models/invoice_model.dart';
 import '../models/sync_status.dart';
+import '../services/invoice_pdf_cache.dart';
 import '../services/supabase_sync_service.dart';
 
 class ItemController extends GetxController {
@@ -147,6 +148,7 @@ class ItemController extends GetxController {
         invoice.syncStatus = SyncStatus.pending;
 
         invoiceBox.put(invoice.invoiceId, invoice);
+        invalidatePdfCache(invoice.invoiceId);
 
         changed = true;
       }

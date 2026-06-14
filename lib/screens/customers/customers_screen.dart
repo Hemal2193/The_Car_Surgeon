@@ -97,54 +97,60 @@ class _CustomersScreenState extends State<CustomersScreen> {
           const SizedBox(height: 20),
 
           Expanded(
-            child: GetBuilder<CustomerController>(
-              builder: (controller) {
-                final customers = controller.customers.where((customer) {
-                  if (_searchQuery.isEmpty) return true;
+            child: GetBuilder<VehicleController>(
+              builder: (_) {
+                return GetBuilder<CustomerController>(
+                  builder: (controller) {
+                    final customers = controller.customers.where((customer) {
+                      if (_searchQuery.isEmpty) return true;
 
-                  return customer.customerId.toLowerCase().contains(
-                        _searchQuery,
-                      ) ||
-                      customer.name.toLowerCase().contains(_searchQuery) ||
-                      customer.contact1.toLowerCase().contains(_searchQuery) ||
-                      (customer.gstNumber ?? '').toLowerCase().contains(
-                        _searchQuery,
+                      return customer.customerId.toLowerCase().contains(
+                            _searchQuery,
+                          ) ||
+                          customer.name.toLowerCase().contains(_searchQuery) ||
+                          customer.contact1.toLowerCase().contains(
+                            _searchQuery,
+                          ) ||
+                          (customer.gstNumber ?? '').toLowerCase().contains(
+                            _searchQuery,
+                          );
+                    }).toList();
+
+                    if (customers.isEmpty) {
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(child: Text('No customers found')),
                       );
-                }).toList();
+                    }
 
-                if (customers.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(child: Text('No customers found')),
-                  );
-                }
-
-                return Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SingleChildScrollView(
-                    child: DataTable(
-                      showCheckboxColumn: false,
-                      columns: const [
-                        DataColumn(label: Text('Customer ID')),
-                        DataColumn(label: Text('Name')),
-                        DataColumn(label: Text('Contact')),
-                        DataColumn(label: Text('GST')),
-                        DataColumn(label: Text('Vehicles')),
-                        DataColumn(label: Text('Actions')),
-                      ],
-                      rows: customers.map((customer) {
-                        return buildCustomerRow(context, customer);
-                      }).toList(),
-                    ),
-                  ),
+                    return Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        child: DataTable(
+                          showCheckboxColumn: false,
+                          columns: const [
+                            DataColumn(label: Text('Customer ID')),
+                            DataColumn(label: Text('Name')),
+                            DataColumn(label: Text('Contact')),
+                            DataColumn(label: Text('GST')),
+                            DataColumn(label: Text('Vehicles')),
+                            DataColumn(label: Text('Actions')),
+                          ],
+                          rows: customers.map((customer) {
+                            return buildCustomerRow(context, customer);
+                          }).toList(),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -226,29 +232,37 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   Widget _buildMobileCustomerList() {
-    return GetBuilder<CustomerController>(
-      builder: (controller) {
-        final customers = controller.customers.where((customer) {
-          if (_searchQuery.isEmpty) {
-            return true;
-          }
+    return GetBuilder<VehicleController>(
+      builder: (_) {
+        return GetBuilder<CustomerController>(
+          builder: (controller) {
+            final customers = controller.customers.where((customer) {
+              if (_searchQuery.isEmpty) {
+                return true;
+              }
 
-          return customer.customerId.toLowerCase().contains(_searchQuery) ||
-              customer.name.toLowerCase().contains(_searchQuery) ||
-              customer.contact1.toLowerCase().contains(_searchQuery) ||
-              (customer.gstNumber ?? '').toLowerCase().contains(_searchQuery);
-        }).toList();
+              return customer.customerId.toLowerCase().contains(_searchQuery) ||
+                  customer.name.toLowerCase().contains(_searchQuery) ||
+                  customer.contact1.toLowerCase().contains(_searchQuery) ||
+                  (customer.gstNumber ?? '').toLowerCase().contains(
+                    _searchQuery,
+                  );
+            }).toList();
 
-        if (customers.isEmpty) {
-          return const Center(child: Text('No customers found'));
-        }
+            if (customers.isEmpty) {
+              return const Center(child: Text('No customers found'));
+            }
 
-        return ListView.builder(
-          padding: EdgeInsets.only(bottom: 150),
-          itemCount: customers.length,
+            return ListView.builder(
+              padding: EdgeInsets.only(bottom: 150),
+              itemCount: customers.length,
 
-          itemBuilder: (context, index) {
-            return _buildCustomerTile(customers[customers.length - index - 1]);
+              itemBuilder: (context, index) {
+                return _buildCustomerTile(
+                  customers[customers.length - index - 1],
+                );
+              },
+            );
           },
         );
       },

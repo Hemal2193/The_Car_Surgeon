@@ -115,126 +115,140 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
           /// TABLE
           Expanded(
-            child: GetBuilder<InvoiceController>(
-              builder: (invoiceController) {
-                final customerController = Get.find<CustomerController>();
-                final vehicleController = Get.find<VehicleController>();
+            child: GetBuilder<CustomerController>(
+              builder: (customerController) {
+                return GetBuilder<VehicleController>(
+                  builder: (vehicleController) {
+                    return GetBuilder<InvoiceController>(
+                      builder: (invoiceController) {
+                        final invoices = invoiceController.invoices
+                            .where(
+                              (inv) => matchesSearch(inv, customerController),
+                            )
+                            .toList();
 
-                final invoices = invoiceController.invoices
-                    .where((inv) => matchesSearch(inv, customerController))
-                    .toList();
-
-                if (invoices.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(child: Text("No invoices found")),
-                  );
-                }
-
-                return Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SingleChildScrollView(
-                    child: DataTable(
-                      showCheckboxColumn: false,
-                      columns: const [
-                        DataColumn(label: Text("Invoice ID")),
-                        DataColumn(label: Text("Date")),
-                        DataColumn(label: Text("Customer")),
-                        DataColumn(label: Text("Vehicle")),
-                        DataColumn(label: Text("Items")),
-                        DataColumn(label: Text("Tax")),
-                        DataColumn(label: Text("Grand Total")),
-                        DataColumn(label: Text("Actions")),
-                      ],
-                      rows: invoices.map((inv) {
-                        final customer = customerController.getCustomerById(
-                          inv.customerId,
-                        );
-
-                        final vehicle = vehicleController.getVehicleById(
-                          inv.vehicleId,
-                        );
-
-                        final customerName = customer?.name ?? "Unknown";
-                        final vehicleReg =
-                            vehicle?.registrationNumber ?? "Unknown";
-
-                        final itemsCount = inv.items.length;
-
-                        final totalTax = inv.items.fold<double>(
-                          0.0,
-                          (sum, item) => sum + item.taxAmount,
-                        );
-
-                        return DataRow(
-                          onSelectChanged: (selected) {
-                            if (selected == true) {
-                              Get.to(
-                                () => InvoicePreviewScreen(
-                                  invoiceId: inv.invoiceId,
-                                ),
-                              );
-                            }
-                          },
-                          cells: [
-                            DataCell(
-                              Text(
-                                inv.invoiceId,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                        if (invoices.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            child: const Center(
+                              child: Text("No invoices found"),
+                            ),
+                          );
+                        }
 
-                            DataCell(Text(formatDate(inv.dateTime))),
+                        return Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SingleChildScrollView(
+                            child: DataTable(
+                              showCheckboxColumn: false,
+                              columns: const [
+                                DataColumn(label: Text("Invoice ID")),
+                                DataColumn(label: Text("Date")),
+                                DataColumn(label: Text("Customer")),
+                                DataColumn(label: Text("Vehicle")),
+                                DataColumn(label: Text("Items")),
+                                DataColumn(label: Text("Tax")),
+                                DataColumn(label: Text("Grand Total")),
+                                DataColumn(label: Text("Actions")),
+                              ],
+                              rows: invoices.map((inv) {
+                                final customer = customerController
+                                    .getCustomerById(inv.customerId);
 
-                            DataCell(Text(customerName)),
+                                final vehicle = vehicleController
+                                    .getVehicleById(inv.vehicleId);
 
-                            DataCell(Text(vehicleReg)),
+                                final customerName =
+                                    customer?.name ?? "Unknown";
+                                final vehicleReg =
+                                    vehicle?.registrationNumber ?? "Unknown";
 
-                            DataCell(Text(itemsCount.toString())),
+                                final itemsCount = inv.items.length;
 
-                            DataCell(Text(totalTax.toStringAsFixed(2))),
+                                final totalTax = inv.items.fold<double>(
+                                  0.0,
+                                  (sum, item) => sum + item.taxAmount,
+                                );
 
-                            DataCell(Text(inv.grandTotal.toStringAsFixed(2))),
-
-                            DataCell(
-                              AppPopupMenu(
-                                onEdit: () {
-                                  Get.to(
-                                    () => CreateInvoiceScreen(invoice: inv),
-                                  );
-                                },
-                                onDelete: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => DeleteConfirmationDialog(
-                                      title: "Delete Invoice",
-                                      message:
-                                          "Are you sure you want to delete ${inv.invoiceId}?",
-                                      onDelete: () async {
-                                        await invoiceController.deleteInvoice(
-                                          inv.invoiceId,
-                                        );
-                                      },
+                                return DataRow(
+                                  onSelectChanged: (selected) {
+                                    if (selected == true) {
+                                      Get.to(
+                                        () => InvoicePreviewScreen(
+                                          invoiceId: inv.invoiceId,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  cells: [
+                                    DataCell(
+                                      Text(
+                                        inv.invoiceId,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
-                              ),
+
+                                    DataCell(Text(formatDate(inv.dateTime))),
+
+                                    DataCell(Text(customerName)),
+
+                                    DataCell(Text(vehicleReg)),
+
+                                    DataCell(Text(itemsCount.toString())),
+
+                                    DataCell(Text(totalTax.toStringAsFixed(2))),
+
+                                    DataCell(
+                                      Text(inv.grandTotal.toStringAsFixed(2)),
+                                    ),
+
+                                    DataCell(
+                                      AppPopupMenu(
+                                        onEdit: () {
+                                          Get.to(
+                                            () => CreateInvoiceScreen(
+                                              invoice: inv,
+                                            ),
+                                          );
+                                        },
+                                        onDelete: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (_) =>
+                                                DeleteConfirmationDialog(
+                                                  title: "Delete Invoice",
+                                                  message:
+                                                      "Are you sure you want to delete ${inv.invoiceId}?",
+                                                  onDelete: () async {
+                                                    await invoiceController
+                                                        .deleteInvoice(
+                                                          inv.invoiceId,
+                                                        );
+                                                  },
+                                                ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
                             ),
-                          ],
+                          ),
                         );
-                      }).toList(),
-                    ),
-                  ),
+                      },
+                    );
+                  },
                 );
               },
             ),
@@ -310,25 +324,33 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   }
 
   Widget _buildMobileInvoiceList() {
-    return GetBuilder<InvoiceController>(
-      builder: (invoiceController) {
-        final customerController = Get.find<CustomerController>();
+    return GetBuilder<CustomerController>(
+      builder: (customerController) {
+        return GetBuilder<VehicleController>(
+          builder: (_) {
+            return GetBuilder<InvoiceController>(
+              builder: (invoiceController) {
+                final invoices = invoiceController.invoices
+                    .where((inv) => matchesSearch(inv, customerController))
+                    .toList();
 
-        final invoices = invoiceController.invoices
-            .where((inv) => matchesSearch(inv, customerController))
-            .toList();
+                if (invoices.isEmpty) {
+                  return const Center(child: Text('No invoices found'));
+                }
 
-        if (invoices.isEmpty) {
-          return const Center(child: Text('No invoices found'));
-        }
+                return ListView.builder(
+                  padding: EdgeInsets.only(bottom: 150),
 
-        return ListView.builder(
-          padding: EdgeInsets.only(bottom: 150),
+                  itemCount: invoices.length,
 
-          itemCount: invoices.length,
-        
-          itemBuilder: (context, index) {
-            return _buildInvoiceTile(invoices[invoices.length - index - 1]);
+                  itemBuilder: (context, index) {
+                    return _buildInvoiceTile(
+                      invoices[invoices.length - index - 1],
+                    );
+                  },
+                );
+              },
+            );
           },
         );
       },

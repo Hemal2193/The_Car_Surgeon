@@ -25,11 +25,23 @@ class VehicleDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (Responsive.isDesktop(context)) {
-      return _buildDesktopVehicles(context);
-    }
+    return GetBuilder<VehicleController>(
+      builder: (_) {
+        return GetBuilder<CustomerController>(
+          builder: (_) {
+            return GetBuilder<InvoiceController>(
+              builder: (_) {
+                if (Responsive.isDesktop(context)) {
+                  return _buildDesktopVehicles(context);
+                }
 
-    return _buildMobileVehicleDetails(context);
+                return _buildMobileVehicleDetails(context);
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildDesktopVehicles(BuildContext context) {

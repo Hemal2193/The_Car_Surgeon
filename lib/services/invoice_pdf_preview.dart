@@ -4,15 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../models/invoice_model.dart';
+import '../services/invoice_pdf_cache.dart';
 import '../services/invoice_pdf_service.dart';
-
-/// Global cache: invoiceId → PDF bytes
-final Map<String, Uint8List> _pdfCache = {};
-
-/// Invalidates the cached PDF for a specific invoice so it regenerates on next view.
-void invalidatePdfCache(String invoiceId) {
-  _pdfCache.remove(invoiceId);
-}
 
 class InvoicePdfPreview extends StatefulWidget {
   final Invoice invoice;
@@ -28,10 +21,9 @@ class _InvoicePdfPreviewState extends State<InvoicePdfPreview> {
   Widget build(BuildContext context) {
     final invoiceId = widget.invoice.invoiceId;
 
-    // Check cache first
-    if (_pdfCache.containsKey(invoiceId)) {
+    if (pdfCache.containsKey(invoiceId)) {
       return SfPdfViewer.memory(
-        _pdfCache[invoiceId]!,
+        pdfCache[invoiceId]!,
         pageLayoutMode: PdfPageLayoutMode.continuous,
         scrollDirection: PdfScrollDirection.vertical,
         canShowPaginationDialog: false,
@@ -55,8 +47,7 @@ class _InvoicePdfPreviewState extends State<InvoicePdfPreview> {
           return const Center(child: Text('No PDF found'));
         }
 
-        // Cache the bytes before displaying
-        _pdfCache[invoiceId] = snapshot.data!;
+        pdfCache[invoiceId] = snapshot.data!;
 
         return SfPdfViewer.memory(
           snapshot.data!,

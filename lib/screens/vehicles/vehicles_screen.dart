@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
 
 import 'package:tcs/models/customer_model.dart';
@@ -89,59 +90,67 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           const SizedBox(height: 20),
 
           Expanded(
-            child: GetBuilder<VehicleController>(
-              builder: (vehicleController) {
-                final vehicles = vehicleController.vehicles.where((vehicle) {
-                  if (_searchQuery.isEmpty) return true;
+            child: GetBuilder<CustomerController>(
+              builder: (_) {
+                return GetBuilder<VehicleController>(
+                  builder: (vehicleController) {
+                    final vehicles = vehicleController.vehicles.where((
+                      vehicle,
+                    ) {
+                      if (_searchQuery.isEmpty) return true;
 
-                  final customer = CustomerCache.getById(vehicle.customerId);
-
-                  return vehicle.vehicleId.toLowerCase().contains(
-                        _searchQuery,
-                      ) ||
-                      vehicle.registrationNumber.toLowerCase().contains(
-                        _searchQuery,
-                      ) ||
-                      vehicle.make.toLowerCase().contains(_searchQuery) ||
-                      vehicle.model.toLowerCase().contains(_searchQuery) ||
-                      (customer?.name ?? '').toLowerCase().contains(
-                        _searchQuery,
+                      final customer = CustomerCache.getById(
+                        vehicle.customerId,
                       );
-                }).toList();
 
-                if (vehicles.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(child: Text('No vehicles found')),
-                  );
-                }
+                      return vehicle.vehicleId.toLowerCase().contains(
+                            _searchQuery,
+                          ) ||
+                          vehicle.registrationNumber.toLowerCase().contains(
+                            _searchQuery,
+                          ) ||
+                          vehicle.make.toLowerCase().contains(_searchQuery) ||
+                          vehicle.model.toLowerCase().contains(_searchQuery) ||
+                          (customer?.name ?? '').toLowerCase().contains(
+                            _searchQuery,
+                          );
+                    }).toList();
 
-                return Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SingleChildScrollView(
-                    child: DataTable(
-                      showCheckboxColumn: false,
-                      columns: const [
-                        DataColumn(label: Text('Vehicle ID')),
-                        DataColumn(label: Text('Registration No')),
-                        DataColumn(label: Text('Customer')),
-                        DataColumn(label: Text('Make')),
-                        DataColumn(label: Text('Model')),
-                        DataColumn(label: Text('Actions')),
-                      ],
-                      rows: vehicles.map((vehicle) {
-                        return buildVehicleRow(context, vehicle);
-                      }).toList(),
-                    ),
-                  ),
+                    if (vehicles.isEmpty) {
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(child: Text('No vehicles found')),
+                      );
+                    }
+
+                    return Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        child: DataTable(
+                          showCheckboxColumn: false,
+                          columns: const [
+                            DataColumn(label: Text('Vehicle ID')),
+                            DataColumn(label: Text('Registration No')),
+                            DataColumn(label: Text('Customer')),
+                            DataColumn(label: Text('Make')),
+                            DataColumn(label: Text('Model')),
+                            DataColumn(label: Text('Actions')),
+                          ],
+                          rows: vehicles.map((vehicle) {
+                            return buildVehicleRow(context, vehicle);
+                          }).toList(),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -224,33 +233,39 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   }
 
   Widget _buildMobileVehicleList() {
-    return GetBuilder<VehicleController>(
-      builder: (vehicleController) {
-        final vehicles = vehicleController.vehicles.where((vehicle) {
-          if (_searchQuery.isEmpty) {
-            return true;
-          }
+    return GetBuilder<CustomerController>(
+      builder: (_) {
+        return GetBuilder<VehicleController>(
+          builder: (vehicleController) {
+            final vehicles = vehicleController.vehicles.where((vehicle) {
+              if (_searchQuery.isEmpty) {
+                return true;
+              }
 
-          final customer = CustomerCache.getById(vehicle.customerId);
+              final customer = CustomerCache.getById(vehicle.customerId);
 
-          return vehicle.vehicleId.toLowerCase().contains(_searchQuery) ||
-              vehicle.registrationNumber.toLowerCase().contains(_searchQuery) ||
-              vehicle.make.toLowerCase().contains(_searchQuery) ||
-              vehicle.model.toLowerCase().contains(_searchQuery) ||
-              (customer?.name ?? '').toLowerCase().contains(_searchQuery);
-        }).toList();
+              return vehicle.vehicleId.toLowerCase().contains(_searchQuery) ||
+                  vehicle.registrationNumber.toLowerCase().contains(
+                    _searchQuery,
+                  ) ||
+                  vehicle.make.toLowerCase().contains(_searchQuery) ||
+                  vehicle.model.toLowerCase().contains(_searchQuery) ||
+                  (customer?.name ?? '').toLowerCase().contains(_searchQuery);
+            }).toList();
 
-        if (vehicles.isEmpty) {
-          return const Center(child: Text('No vehicles found'));
-        }
+            if (vehicles.isEmpty) {
+              return const Center(child: Text('No vehicles found'));
+            }
 
-        return ListView.builder(
-          padding: EdgeInsets.only(bottom: 150),
+            return ListView.builder(
+              padding: EdgeInsets.only(bottom: 150),
 
-          itemCount: vehicles.length,
+              itemCount: vehicles.length,
 
-          itemBuilder: (context, index) {
-            return _buildVehicleTile(vehicles[vehicles.length - index - 1]);
+              itemBuilder: (context, index) {
+                return _buildVehicleTile(vehicles[vehicles.length - index - 1]);
+              },
+            );
           },
         );
       },
