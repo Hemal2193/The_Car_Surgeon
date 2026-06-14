@@ -6,6 +6,7 @@ import '../database/hive_boxes.dart';
 import '../models/item_model.dart';
 import '../models/invoice_model.dart';
 import '../models/sync_status.dart';
+import '../services/supabase_sync_service.dart';
 
 class ItemController extends GetxController {
   final Box<Item> itemBox = Hive.box<Item>(HiveBoxes.items);
@@ -33,6 +34,12 @@ class ItemController extends GetxController {
     await itemBox.put(item.itemId, item);
 
     update();
+    Get.find<SupabaseSyncService>().syncItems();
+
+    print("NEW ITEM ID: ${item.itemId}");
+
+    print(itemBox.keys.toList());
+    print(itemBox.values.toList());
   }
 
   Future<void> updateItem(Item item) async {
@@ -44,6 +51,7 @@ class ItemController extends GetxController {
     _updateInvoiceItems(item);
 
     update();
+    Get.find<SupabaseSyncService>().syncItems();
   }
 
   Future<void> deleteItem(String id) async {
@@ -58,6 +66,7 @@ class ItemController extends GetxController {
     await itemBox.put(id, item);
 
     update();
+    Get.find<SupabaseSyncService>().syncItems();
   }
 
   List<Item> get pendingItems => itemBox.values
@@ -92,59 +101,60 @@ class ItemController extends GetxController {
     }
   }
 
-void _updateInvoiceItems(Item item) {
-  final invoiceBox = Hive.box<Invoice>(HiveBoxes.invoices);
+  void _updateInvoiceItems(Item item) {
+    final invoiceBox = Hive.box<Invoice>(HiveBoxes.invoices);
 
-  bool changed = false;
+    bool changed = false;
 
-  for (final invoice in invoiceBox.values) {
-    if (invoice.isDeleted) continue;
+    for (final invoice in invoiceBox.values) {
+      if (invoice.isDeleted) continue;
 
-    bool invoiceChanged = false;
+      bool invoiceChanged = false;
 
-    for (int i = 0; i < invoice.items.length; i++) {
-      final invoiceItem = invoice.items[i];
+      for (int i = 0; i < invoice.items.length; i++) {
+        final invoiceItem = invoice.items[i];
 
-      if (invoiceItem.itemId == item.itemId) {
-        final newTaxAmount =
-            invoiceItem.qty * invoiceItem.rate * item.gst / 100;
+        if (invoiceItem.itemId == item.itemId) {
+          final newTaxAmount =
+              invoiceItem.qty * invoiceItem.rate * item.gst / 100;
 
-        final newTotalAmount =
-            (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
+          final newTotalAmount =
+              (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
 
-        invoice.items[i] = InvoiceItem(
-          itemId: invoiceItem.itemId,
-          name: item.name,
-          type: invoiceItem.type,
-          hsnSac: item.hsnSac ?? invoiceItem.hsnSac,
-          qty: invoiceItem.qty,
-          rate: invoiceItem.rate,
-          taxPercent: item.gst,
-          taxAmount: newTaxAmount,
-          totalAmount: newTotalAmount,
+          invoice.items[i] = InvoiceItem(
+            itemId: invoiceItem.itemId,
+            name: item.name,
+            type: invoiceItem.type,
+            hsnSac: item.hsnSac ?? invoiceItem.hsnSac,
+            qty: invoiceItem.qty,
+            rate: invoiceItem.rate,
+            taxPercent: item.gst,
+            taxAmount: newTaxAmount,
+            totalAmount: newTotalAmount,
+          );
+
+          invoiceChanged = true;
+        }
+      }
+
+      if (invoiceChanged) {
+        invoice.grandTotal = invoice.items.fold(
+          0,
+          (sum, item) => sum + item.totalAmount,
         );
 
-        invoiceChanged = true;
+        invoice.updatedAt = DateTime.now();
+        invoice.syncStatus = SyncStatus.pending;
+
+        invoiceBox.put(invoice.invoiceId, invoice);
+
+        changed = true;
       }
     }
 
-    if (invoiceChanged) {
-      invoice.grandTotal = invoice.items.fold(
-        0,
-        (sum, item) => sum + item.totalAmount,
-      );
-
-      invoice.updatedAt = DateTime.now();
-      invoice.syncStatus = SyncStatus.pending;
-
-      invoiceBox.put(invoice.invoiceId, invoice);
-
-      changed = true;
+    if (changed) {
+      Get.find<InvoiceController>().update();
+      Get.find<SupabaseSyncService>().syncInvoices();
     }
   }
-
-  if (changed) {
-    Get.find<InvoiceController>().update();
-  }
-}
 }

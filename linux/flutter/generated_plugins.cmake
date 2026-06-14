@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_linux
   flutter_acrylic
   gtk
+  pasteboard
   printing
   screen_retriever_linux
   syncfusion_pdfviewer_linux

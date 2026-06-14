@@ -364,7 +364,7 @@ class SupabaseSyncService {
     startRealtimeSync();
     syncAll();
 
-    _timer = Timer.periodic(const Duration(minutes: 2), (_) {
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       syncAll();
     });
   }
@@ -450,13 +450,14 @@ class SupabaseSyncService {
   // CUSTOMERS
   // =====================================================
   Future<void> syncCustomers() async {
+    print("Syncing customers...");
     final controller = Get.find<CustomerController>();
 
     // 1. PUSH LOCAL CHANGES
-    final pending = controller.customers
+    final pending = controller.allCustomers
         .where((c) => c.syncStatus != SyncStatus.synced)
         .toList();
-
+    print("Pending customers: ${pending.length}");
     for (final c in pending) {
       try {
         await supabase.from('customers').upsert({
@@ -474,6 +475,7 @@ class SupabaseSyncService {
         });
 
         controller.markAsSynced(c.customerId);
+        print("Customer delete pushed: ${c.customerId}");
       } catch (e) {
         print("Customer push error: $e");
       }
@@ -515,7 +517,7 @@ class SupabaseSyncService {
   Future<void> syncVehicles() async {
     final controller = Get.find<VehicleController>();
 
-    final pending = controller.vehicles
+    final pending = controller.allVehicles
         .where((v) => v.syncStatus != SyncStatus.synced)
         .toList();
 
@@ -578,7 +580,7 @@ class SupabaseSyncService {
   Future<void> syncItems() async {
     final controller = Get.find<ItemController>();
 
-    final pending = controller.items
+    final pending = controller.allItems
         .where((i) => i.syncStatus != SyncStatus.synced)
         .toList();
 
@@ -633,7 +635,7 @@ class SupabaseSyncService {
   Future<void> syncInvoices() async {
     final controller = Get.find<InvoiceController>();
 
-    final pending = controller.invoices
+    final pending = controller.allInvoices
         .where((i) => i.syncStatus != SyncStatus.synced)
         .toList();
 
@@ -644,19 +646,21 @@ class SupabaseSyncService {
           'customer_id': i.customerId,
           'vehicle_id': i.vehicleId,
           'date_time': i.dateTime.toIso8601String(),
-          'items': i.items.map(
-            (e) => {
-              'item_id': e.itemId,
-              'name': e.name,
-              'type': e.type,
-              'hsn_sac': e.hsnSac,
-              'qty': e.qty,
-              'rate': e.rate,
-              'tax_percent': e.taxPercent,
-              'tax_amount': e.taxAmount,
-              'total_amount': e.totalAmount,
-            },
-          ),
+          'items': i.items
+              .map(
+                (e) => {
+                  'item_id': e.itemId,
+                  'name': e.name,
+                  'type': e.type,
+                  'hsn_sac': e.hsnSac,
+                  'qty': e.qty,
+                  'rate': e.rate,
+                  'tax_percent': e.taxPercent,
+                  'tax_amount': e.taxAmount,
+                  'total_amount': e.totalAmount,
+                },
+              )
+              .toList(),
           'grand_total': i.grandTotal,
           'updated_at': i.updatedAt.toIso8601String(),
           'device_id': deviceId,
@@ -688,7 +692,9 @@ class SupabaseSyncService {
             name: map['name'] ?? '',
             type: map['type'] ?? '',
             hsnSac: map['hsn_sac'] ?? '',
-            qty: (map['qty'] ?? 0).toDouble(),
+            qty: (map['qty'] ?? 0) is int
+                ? (map['qty'] as int)
+                : ((map['qty'] as num).toInt()),
             rate: (map['rate'] ?? 0).toDouble(),
             taxPercent: (map['tax_percent'] ?? 0).toDouble(),
             taxAmount: (map['tax_amount'] ?? 0).toDouble(),
@@ -722,7 +728,7 @@ class SupabaseSyncService {
   Future<void> syncReminders() async {
     final controller = Get.find<ReminderController>();
 
-    final pending = controller.reminders
+    final pending = controller.allReminders
         .where((r) => r.syncStatus != SyncStatus.synced)
         .toList();
 

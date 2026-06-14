@@ -5,6 +5,7 @@ import 'package:tcs/models/sync_status.dart';
 import '../database/hive_boxes.dart';
 import '../models/customer_model.dart';
 import '../services/customer_cache.dart';
+import '../services/supabase_sync_service.dart';
 
 class CustomerController extends GetxController {
   final Box<Customer> customerBox = Hive.box<Customer>(HiveBoxes.customers);
@@ -31,6 +32,7 @@ class CustomerController extends GetxController {
     await customerBox.put(customer.customerId, customer);
 
     _refreshCacheAndUI();
+    Get.find<SupabaseSyncService>().syncCustomers();
   }
 
   Future<void> updateCustomer(Customer customer) async {
@@ -40,6 +42,7 @@ class CustomerController extends GetxController {
     await customerBox.put(customer.customerId, customer);
 
     _refreshCacheAndUI();
+    Get.find<SupabaseSyncService>().syncCustomers();
   }
 
   Future<void> deleteCustomer(String id) async {
@@ -52,8 +55,10 @@ class CustomerController extends GetxController {
     customer.syncStatus = SyncStatus.pending;
 
     await customer.save();
+    print("Customer deleted: $id");
 
     _refreshCacheAndUI();
+    Get.find<SupabaseSyncService>().syncCustomers();
   }
 
   List<Customer> getPendingCustomers() {

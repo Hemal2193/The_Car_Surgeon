@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../database/hive_boxes.dart';
 import '../models/invoice_model.dart';
 import '../models/sync_status.dart';
+import '../services/supabase_sync_service.dart';
 
 class InvoiceController extends GetxController {
   final Box<Invoice> invoiceBox = Hive.box<Invoice>(HiveBoxes.invoices);
@@ -34,6 +35,7 @@ class InvoiceController extends GetxController {
     await invoiceBox.put(invoice.invoiceId, invoice);
 
     update();
+    Get.find<SupabaseSyncService>().syncInvoices();
   }
 
   Future<void> updateInvoice(Invoice invoice) async {
@@ -43,6 +45,7 @@ class InvoiceController extends GetxController {
     await invoiceBox.put(invoice.invoiceId, invoice);
 
     update();
+    Get.find<SupabaseSyncService>().syncInvoices();
   }
 
   Future<void> deleteInvoice(String id) async {
@@ -57,6 +60,7 @@ class InvoiceController extends GetxController {
     await invoiceBox.put(id, invoice);
 
     update();
+    Get.find<SupabaseSyncService>().syncInvoices();
   }
 
   /// CALLED BY SUPABASE SYNC SERVICE

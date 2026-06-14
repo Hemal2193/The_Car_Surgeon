@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../database/hive_boxes.dart';
 import '../models/reminder_model.dart';
 import '../models/sync_status.dart';
+import '../services/supabase_sync_service.dart';
 
 class ReminderController extends GetxController {
   final Box<Reminder> reminderBox = Hive.box<Reminder>(HiveBoxes.reminders);
@@ -30,6 +31,7 @@ class ReminderController extends GetxController {
     await reminderBox.put(reminder.reminderId, reminder);
 
     update();
+    Get.find<SupabaseSyncService>().syncReminders();
   }
 
   Future<void> updateReminder(Reminder reminder) async {
@@ -39,6 +41,7 @@ class ReminderController extends GetxController {
     await reminderBox.put(reminder.reminderId, reminder);
 
     update();
+    Get.find<SupabaseSyncService>().syncReminders();
   }
 
   Future<void> deleteReminder(String reminderId) async {
@@ -53,6 +56,7 @@ class ReminderController extends GetxController {
     await reminderBox.put(reminderId, reminder);
 
     update();
+    Get.find<SupabaseSyncService>().syncReminders();
   }
 
   /// CALLED BY SUPABASE SYNC SERVICE

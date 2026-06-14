@@ -150,6 +150,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text("Add Qty Type"),
           content: TextField(
             controller: controller,
@@ -160,8 +161,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
               onPressed: () => Navigator.pop(context),
               child: const Text("Cancel"),
             ),
-            ElevatedButton(
-              onPressed: () {
+            cButton(
+              () {
                 final value = controller.text.trim();
 
                 if (value.isEmpty) return;
@@ -173,7 +174,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
                 Navigator.pop(context);
               },
-              child: const Text("Add"),
+              "Save",
+              true,
             ),
           ],
         );

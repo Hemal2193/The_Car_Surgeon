@@ -207,14 +207,31 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                             false,
                           ),
                         ),
+
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
                           child: cButton(
                             () async {
-                              await InvoicePdfService.shareInvoicePdf(invoice);
+                              final path =
+                                  await InvoicePdfService.shareInvoiceViaWhatsApp(
+                                    invoice,
+                                    customer,
+                                  );
+                              if (path != null && context.mounted) {
+                                Get.snackbar(
+                                  'WhatsApp',
+                                  'PDF copied. Press Ctrl + V in WhatsApp.',
+                                  snackPosition: SnackPosition.BOTTOM,
+                                  duration: const Duration(seconds: 6),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 20,
+                                  ),
+                                );
+                              }
                             },
-                            'Share PDF',
+                            'Share via WhatsApp',
                             false,
                           ),
                         ),

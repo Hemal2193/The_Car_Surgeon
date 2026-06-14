@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../database/hive_boxes.dart';
 import '../models/sync_status.dart';
 import '../models/vehicle_model.dart';
+import '../services/supabase_sync_service.dart';
 
 class VehicleController extends GetxController {
   final Box<Vehicle> vehicleBox = Hive.box<Vehicle>(HiveBoxes.vehicles);
@@ -27,6 +28,7 @@ class VehicleController extends GetxController {
     await vehicleBox.put(vehicle.vehicleId, vehicle);
 
     update();
+    Get.find<SupabaseSyncService>().syncVehicles();
   }
 
   Future<void> updateVehicle(Vehicle vehicle) async {
@@ -36,6 +38,7 @@ class VehicleController extends GetxController {
     await vehicleBox.put(vehicle.vehicleId, vehicle);
 
     update();
+    Get.find<SupabaseSyncService>().syncVehicles();
   }
 
   Future<void> deleteVehicle(String vehicleId) async {
@@ -50,6 +53,7 @@ class VehicleController extends GetxController {
     await vehicle.save();
 
     update();
+    Get.find<SupabaseSyncService>().syncVehicles();
   }
 
   int getVehicleCountForCustomer(String customerId) {

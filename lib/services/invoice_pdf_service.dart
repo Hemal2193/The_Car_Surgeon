@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show rootBundle, MethodChannel;
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:number_to_words_english/number_to_words_english.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
@@ -14,6 +15,8 @@ import 'package:tcs/controllers/customer_controller.dart';
 import 'package:tcs/controllers/vehicle_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:printing/printing.dart';
+import 'package:tcs/models/customer_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/invoice_model.dart';
 
 class InvoicePdfService {
@@ -129,6 +132,54 @@ class InvoicePdfService {
         filename: '${invoice.invoiceId}.pdf',
       );
     }
+  }
+
+  // =====================================================
+  // SHARE VIA WHATSAPP – DESKTOP
+  // Saves PDF to Desktop/TCS_Invoices folder,
+  // opens WhatsApp Web, and returns the saved file path.
+  // =====================================================
+  static Future<String?> shareInvoiceViaWhatsApp(
+    Invoice invoice,
+    Customer? customer,
+  ) async {
+    final bytes = await generatePdfBytes(invoice);
+    final mobileNo = customer?.contact1;
+
+    // Save to Desktop/TCS_Invoices/
+    final desktop = Directory(
+      '${Platform.environment['USERPROFILE']}\\Desktop',
+    );
+
+    final tcsDir = Directory('${desktop.path}\\TCS_Invoices');
+
+    if (!await tcsDir.exists()) {
+      await tcsDir.create(recursive: true);
+    }
+
+    final pdfFile = File('${tcsDir.path}\\${invoice.invoiceId}.pdf');
+
+    await pdfFile.writeAsBytes(bytes);
+
+    final savedPath = pdfFile.path;
+
+    // Open WhatsApp chat directly
+    if (mobileNo != null && mobileNo.trim().isNotEmpty) {
+      try {
+        final phone = mobileNo.replaceAll(RegExp(r'[^0-9]'), '');
+
+        await Pasteboard.writeFiles([savedPath]);
+
+        await launchUrl(
+          Uri.parse('https://wa.me/91$phone'),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {
+        // Ignore errors
+      }
+    }
+
+    return savedPath;
   }
 
   // =====================================================

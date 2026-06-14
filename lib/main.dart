@@ -16,6 +16,7 @@ import 'controllers/reminder_controller.dart';
 import 'controllers/vehicle_controller.dart';
 
 import 'database/hive_boxes.dart';
+import 'database/id_resolver.dart';
 
 import 'models/customer_model.dart';
 import 'models/invoice_model.dart';
@@ -30,10 +31,9 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: 'https://korzmnwwxywxqybyjiux.supabase.co',
+    
     publishableKey: 'sb_publishable_jKGuzcvKNbe0hbC7qsotng_RhqAMxLW',
   );
-
-  SupabaseSyncService().init();
 
   // WINDOWS / DESKTOP ONLY
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -91,9 +91,11 @@ Future<void> main() async {
   await Hive.openBox<Reminder>(HiveBoxes.reminders);
   await Hive.openBox(HiveBoxes.settings);
 
-  // CONTROLLERS
-  final customerController = Get.put(CustomerController(), permanent: true);
+  // SEED ID GENERATORS from Supabase (prevents ID conflicts on reinstall / multi-device)
+  await IdResolver.seedAllGenerators();
 
+  // CONTROLLERS (register BEFORE sync service so Get.find works)
+  final customerController = Get.put(CustomerController(), permanent: true);
   Get.put(ItemController(), permanent: true);
   Get.put(VehicleController(), permanent: true);
   Get.put(InvoiceController(), permanent: true);
@@ -101,6 +103,10 @@ Future<void> main() async {
 
   // CACHE
   customerController.initCache();
+
+  // SUPABASE SYNC (after controllers are registered)
+  final syncService = Get.put(SupabaseSyncService(), permanent: true);
+  syncService.init();
 
   runApp(const MyApp());
 }
