@@ -13,11 +13,14 @@ class AppSelectorOverlay {
         final int itemCount = children.length;
         final double itemHeight = 48.0;
         final double maxHeight = 220.0;
-        final double actualHeight =
-            (itemCount * itemHeight).clamp(0, maxHeight);
+        final double actualHeight = (itemCount * itemHeight).clamp(
+          0,
+          maxHeight,
+        );
         // When showing above, offset = -(actualHeight + gap)
-        final offset =
-            showAbove ? Offset(0, -(actualHeight + 4)) : const Offset(0, 55);
+        final offset = showAbove
+            ? Offset(0, -(actualHeight + 4))
+            : const Offset(0, 55);
 
         return Stack(
           children: [
@@ -49,7 +52,11 @@ class AppSelectorOverlay {
                           padding: EdgeInsets.all(12),
                           child: Text("No results found"),
                         )
-                      : ListView(shrinkWrap: true, children: children),
+                      : ListView(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          children: children,
+                        ),
                 ),
               ),
             ),

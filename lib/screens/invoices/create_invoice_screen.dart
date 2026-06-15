@@ -5,6 +5,9 @@ import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/models/reminder_model.dart';
+import 'package:tcs/screens/customers/add_customer_dialog.dart';
+import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
+import 'package:tcs/screens/items/add_item_dialog.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_selector.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
@@ -35,6 +38,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   int qty = 1;
   double rate = 0;
   int _customerSelectorVersion = 0;
+  int _vehicleSelectorVersion = 0;
   int _itemSelectorVersion = 0;
 
   final List<_InvoiceRow> rows = [];
@@ -390,7 +394,60 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Customer *", style: TextStyle(fontWeight: FontWeight.w600)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Customer *",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            SizedBox(width: 10),
+            InkWell(
+              onTap: () async {
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  isDismissible: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) {
+                    return DraggableScrollableSheet(
+                      expand: false,
+                      initialChildSize: 0.80,
+                      minChildSize: 0.80,
+                      maxChildSize: 0.92,
+                      shouldCloseOnMinExtent: true,
+                      builder: (context, scrollController) {
+                        return AddCustomerDialog(
+                          scrollController: scrollController,
+                        );
+                      },
+                    );
+                  },
+                );
+                Get.find<CustomerController>().update();
+                setState(() {
+                  _customerSelectorVersion++;
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 3,
+                  ),
+                  child: const Text(
+                    "Add New Customer",
+                    style: TextStyle(fontSize: 9),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
 
         AppSelector<Customer>(
@@ -416,13 +473,66 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Vehicle", style: TextStyle(fontWeight: FontWeight.w600)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Vehicle",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            InkWell(
+              onTap: () async {
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  isDismissible: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) {
+                    return DraggableScrollableSheet(
+                      expand: false,
+                      initialChildSize: 0.80,
+                      minChildSize: 0.80,
+                      maxChildSize: 0.92,
+                      shouldCloseOnMinExtent: true,
+                      builder: (context, scrollController) {
+                        return AddVehicleDialog(
+                          scrollController: scrollController,
+                        );
+                      },
+                    );
+                  },
+                );
+                Get.find<VehicleController>().update();
+                setState(() {
+                  _vehicleSelectorVersion++;
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 3,
+                  ),
+                  child: const Text(
+                    "Add New Vehicle",
+                    style: TextStyle(fontSize: 9),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
 
         if (selectedCustomer == null)
           const Text("Select customer first")
         else
           AppSelector<Vehicle>(
+            key: ValueKey('mobile_vehicle_$_vehicleSelectorVersion'),
             items: Get.find<VehicleController>().vehicles
                 .where((v) => v.customerId == selectedCustomer!.customerId)
                 .toList(),
@@ -592,7 +702,54 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("Items", style: TextStyle(fontWeight: FontWeight.w600)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Items", style: TextStyle(fontWeight: FontWeight.w600)),
+            InkWell(
+              onTap: () async {
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  isDismissible: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) {
+                    return DraggableScrollableSheet(
+                      expand: false,
+                      initialChildSize: 0.80,
+                      minChildSize: 0.80,
+                      maxChildSize: 0.92,
+                      shouldCloseOnMinExtent: true,
+                      builder: (context, scrollController) {
+                        return AddItemDialog(
+                          scrollController: scrollController,
+                        );
+                      },
+                    );
+                  },
+                );
+                Get.find<ItemController>().update();
+                setState(() {
+                  _itemSelectorVersion++;
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 3,
+                  ),
+                  child: Text('Add New Item', style: TextStyle(fontSize: 9)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
         AppSelector<Item>(
           key: ValueKey('mobile_item_$_itemSelectorVersion'),
           focusNode: _itemFocusNode,
