@@ -251,7 +251,7 @@ class InvoicePdfService {
             children: [
               //Section 1
               pw.Container(
-                height: 115,
+                height: 105,
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey),
                   borderRadius: pw.BorderRadius.circular(4),
@@ -335,7 +335,7 @@ class InvoicePdfService {
                               ),
                             ],
                           ),
-                          pw.SizedBox(height: 5),
+                          pw.SizedBox(height: 3),
                           pw.RichText(
                             text: pw.TextSpan(
                               children: [
@@ -357,7 +357,7 @@ class InvoicePdfService {
                               ],
                             ),
                           ),
-                          pw.SizedBox(height: 5),
+                          pw.SizedBox(height: 3),
                           pw.RichText(
                             text: pw.TextSpan(
                               children: [
@@ -478,7 +478,7 @@ class InvoicePdfService {
 
                   //vehicle card
                   pw.Container(
-                    height: 55,
+                    height: 45,
                     width: 240,
                     padding: const pw.EdgeInsets.all(10),
                     decoration: pw.BoxDecoration(
