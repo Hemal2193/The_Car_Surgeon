@@ -245,21 +245,21 @@ class InvoicePdfService {
             style: pw.TextStyle(color: PdfColors.grey900, fontSize: 12),
           ),
           pw.SizedBox(height: 10),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              //Section 1
-              pw.Container(
-                height: 105,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.grey),
-                  borderRadius: pw.BorderRadius.circular(4),
-                ),
-                child: pw.Padding(
-                  padding: const pw.EdgeInsets.all(10),
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+
+          //Section 1
+          pw.Container(
+            width: double.infinity,
+            height: 100,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey),
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.Padding(
+              padding: const pw.EdgeInsets.all(10),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
                     children: [
                       pw.Container(
                         decoration: pw.BoxDecoration(
@@ -383,184 +383,169 @@ class InvoicePdfService {
                       ),
                     ],
                   ),
-                ),
-              ),
-
-              // Section 2
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.end,
-                children: [
-                  //invoice card
+                  pw.SizedBox(width: 15),
                   pw.Container(
-                    height: 50,
-                    width: 240,
-                    padding: const pw.EdgeInsets.all(10),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Column(
-                      children: [
-                        // Labels
-                        pw.Row(
-                          children: [
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Invoice Id",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Invoice Date",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Due Date",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        pw.SizedBox(height: 4),
-
-                        // Values
-                        pw.Row(
-                          children: [
-                            pw.Expanded(
-                              child: pw.Text(
-                                invoice.invoiceId,
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
-                              ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
-                                "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
-                                "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
-                              ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                reminder != null
-                                    ? "${reminder.dueDate.day.toString().padLeft(2, '0')}-"
-                                          "${reminder.dueDate.month.toString().padLeft(2, '0')}-"
-                                          "${(reminder.dueDate.year % 100).toString().padLeft(2, '0')}"
-                                    : "-",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    height: double.infinity,
+                    width: 1.2,
+                    color: PdfColors.grey,
                   ),
-                  pw.SizedBox(height: 10),
 
-                  //vehicle card
-                  pw.Container(
-                    height: 45,
-                    width: 240,
-                    padding: const pw.EdgeInsets.all(10),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Column(
-                      children: [
-                        // Labels
-                        pw.Row(
-                          children: [
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Vehicle No",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
+                  pw.Expanded(
+                    child: pw.Center(
+                      child: pw.Table(
+                        columnWidths: {
+                          0: const pw.FlexColumnWidth(),
+                          1: const pw.FlexColumnWidth(),
+                          2: const pw.FlexColumnWidth(),
+                        },
+                        children: [
+                          // Invoice labels
+                          pw.TableRow(
+                            children: [
+                              pw.Center(
+                                child: pw.Text(
+                                  "Invoice ID",
+                                  style: pw.TextStyle(fontSize: 9),
                                 ),
                               ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Odometer",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
+                              pw.Center(
+                                child: pw.Text(
+                                  "Invoice Date",
+                                  style: pw.TextStyle(fontSize: 9),
                                 ),
                               ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "Model",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
+                              pw.Center(
+                                child: pw.Text(
+                                  "Due Date",
+                                  style: pw.TextStyle(fontSize: 9),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
 
-                        pw.SizedBox(height: 4),
+                          // Invoice values
+                          pw.TableRow(
+                            children: [
+                              pw.Center(
+                                child: pw.Text(
+                                  invoice.invoiceId.toString(),
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                              pw.Center(
+                                child: pw.Text(
+                                  "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
+                                  "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
+                                  "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                              pw.Center(
+                                child: pw.Text(
+                                  reminder != null
+                                      ? "${reminder.dueDate.day.toString().padLeft(2, '0')}-"
+                                            "${reminder.dueDate.month.toString().padLeft(2, '0')}-"
+                                            "${(reminder.dueDate.year % 100).toString().padLeft(2, '0')}"
+                                      : "-",
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
 
-                        // Values
-                        pw.Row(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Expanded(
-                              child: pw.Text(
-                                vehicle?.registrationNumber ?? "-",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
+                          // Spacer row
+                          pw.TableRow(
+                            children: [
+                              pw.SizedBox(height: 15),
+                              pw.SizedBox(height: 15),
+                              pw.SizedBox(height: 15),
+                            ],
+                          ),
+
+                          // Vehicle labels
+                          pw.TableRow(
+                            children: [
+                              pw.Center(
+                                child: pw.Text(
+                                  "Vehicle No",
+                                  style: pw.TextStyle(fontSize: 9),
+                                ),
                               ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                "${vehicle?.odoMeter ?? "-"} Km",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
+                              pw.Center(
+                                child: pw.Text(
+                                  "Odometer",
+                                  style: pw.TextStyle(fontSize: 9),
+                                ),
                               ),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(
-                                vehicle == null
-                                    ? "-"
-                                    : "${vehicle.make} ${vehicle.model}",
-                                textAlign: pw.TextAlign.center,
-                                style: pw.TextStyle(fontSize: 9),
+                              pw.Center(
+                                child: pw.Text(
+                                  "Model",
+                                  style: pw.TextStyle(fontSize: 9),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+
+                          // Vehicle values
+                          pw.TableRow(
+                            children: [
+                              pw.Center(
+                                child: pw.Text(
+                                  vehicle?.registrationNumber ?? "-",
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                              pw.Center(
+                                child: pw.Text(
+                                  vehicle?.odoMeter ?? "-",
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                              pw.Center(
+                                child: pw.Text(
+                                  vehicle == null
+                                      ? "-"
+                                      : "${vehicle.make} ${vehicle.model}",
+                                  style: pw.TextStyle(
+                                    fontWeight: pw.FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
+
+          // Section 2
+          // pw.Column(
+          //   crossAxisAlignment: pw.CrossAxisAlignment.end,
+          //   children: [
+          //     //invoice card
+
+          //   ],
+          // ),
         ],
       ),
     );
