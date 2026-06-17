@@ -37,6 +37,14 @@ class Invoice extends HiveObject {
   @HiveField(8)
   SyncStatus syncStatus;
 
+  /// Advance payment amount (0 if no advance taken)
+  @HiveField(9)
+  double advanceAmount;
+
+  /// Payment method for the advance (e.g. Cash, UPI, Card, etc.)
+  @HiveField(10)
+  String paymentMethod;
+
   Invoice({
     required this.invoiceId,
     required this.customerId,
@@ -48,6 +56,8 @@ class Invoice extends HiveObject {
     DateTime? updatedAt,
     this.isDeleted = false,
     this.syncStatus = SyncStatus.pending,
+    this.advanceAmount = 0,
+    this.paymentMethod = 'Cash',
   }) : updatedAt = updatedAt ?? DateTime.now();
 }
 
@@ -80,6 +90,14 @@ class InvoiceItem {
   @HiveField(8)
   String type;
 
+  /// Discount amount (in currency or percentage depending on [discountIsPercent])
+  @HiveField(9)
+  double discount;
+
+  /// true = discount is a percentage, false = discount is a fixed amount
+  @HiveField(10)
+  bool discountIsPercent;
+
   InvoiceItem({
     required this.itemId,
     required this.name,
@@ -90,5 +108,7 @@ class InvoiceItem {
     required this.taxAmount,
     required this.totalAmount,
     required this.type,
+    this.discount = 0,
+    this.discountIsPercent = false,
   });
 }

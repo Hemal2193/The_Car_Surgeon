@@ -335,20 +335,24 @@ class SupabaseSyncService {
           'date_time': i.dateTime.toIso8601String(),
           'items': i.items
               .map(
-                (e) => {
-                  'item_id': e.itemId,
-                  'name': e.name,
-                  'type': e.type,
-                  'hsn_sac': e.hsnSac,
-                  'qty': e.qty,
-                  'rate': e.rate,
-                  'tax_percent': e.taxPercent,
-                  'tax_amount': e.taxAmount,
-                  'total_amount': e.totalAmount,
-                },
+                  (e) => {
+                    'item_id': e.itemId,
+                    'name': e.name,
+                    'type': e.type,
+                    'hsn_sac': e.hsnSac,
+                    'qty': e.qty,
+                    'rate': e.rate,
+                    'tax_percent': e.taxPercent,
+                    'tax_amount': e.taxAmount,
+                    'total_amount': e.totalAmount,
+                    'discount': e.discount,
+                    'discount_is_percent': e.discountIsPercent,
+                  },
               )
               .toList(),
           'grand_total': i.grandTotal,
+          'advance_amount': i.advanceAmount,
+          'payment_method': i.paymentMethod,
           'updated_at': i.updatedAt.toIso8601String(),
           'device_id': deviceId,
           'is_deleted': i.isDeleted,
@@ -386,6 +390,8 @@ class SupabaseSyncService {
             taxPercent: (map['tax_percent'] ?? 0).toDouble(),
             taxAmount: (map['tax_amount'] ?? 0).toDouble(),
             totalAmount: (map['total_amount'] ?? 0).toDouble(),
+            discount: (map['discount'] ?? 0).toDouble(),
+            discountIsPercent: map['discount_is_percent'] ?? false,
           );
         }).toList();
       }
@@ -398,6 +404,8 @@ class SupabaseSyncService {
               dateTime: DateTime.parse(r['date_time']),
               items: parsedItems,
               grandTotal: (r['grand_total'] ?? 0).toDouble(),
+              advanceAmount: (r['advance_amount'] ?? 0).toDouble(),
+              paymentMethod: r['payment_method'] ?? 'Cash',
             )
             ..updatedAt = DateTime.parse(r['updated_at'])
             ..isDeleted = r['is_deleted'] ?? false

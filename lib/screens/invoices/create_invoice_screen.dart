@@ -4,22 +4,22 @@ import 'package:tcs/controllers/invoice_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/invoice_model.dart';
+import 'package:tcs/models/item_model.dart';
 import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/screens/customers/add_customer_dialog.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
-import 'package:tcs/screens/items/add_item_dialog.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_selector.dart';
+import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/custom_button.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 
 import '../../models/customer_model.dart';
 import '../../models/vehicle_model.dart';
-import '../../models/item_model.dart';
 import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
-import '../../controllers/item_controller.dart';
+import 'add_item_popup.dart';
 
 class CreateInvoiceScreen extends StatefulWidget {
   final Invoice? invoice;
@@ -33,19 +33,24 @@ class CreateInvoiceScreen extends StatefulWidget {
 class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   Customer? selectedCustomer;
   Vehicle? selectedVehicle;
-  Item? selectedItem;
-
-  int qty = 1;
-  double rate = 0;
   int _customerSelectorVersion = 0;
   int _vehicleSelectorVersion = 0;
-  int _itemSelectorVersion = 0;
 
   final List<_InvoiceRow> rows = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
-  final TextEditingController qtyController = TextEditingController(text: "1");
-  final TextEditingController rateController = TextEditingController();
-  final FocusNode _itemFocusNode = FocusNode();
+  // Advance fields
+  final TextEditingController _advanceController = TextEditingController();
+  String _selectedPaymentMethod = 'Cash';
+  static const List<String> _paymentMethods = [
+    'Cash',
+    'UPI',
+    'Card',
+    'Net Banking',
+    'Bank Transfer',
+    'Cheque',
+  ];
 
   // Reminder fields
   final TextEditingController _reminderTitleController =
@@ -55,8 +60,20 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   DateTime _reminderDueDate = DateTime.now().add(const Duration(days: 7));
 
   double get grandTotal => rows.fold(0, (sum, e) => sum + e.totalAmount);
+  double get advanceAmount => double.tryParse(_advanceController.text) ?? 0;
+  double get remainingAmount => grandTotal - advanceAmount;
 
   bool get isEditing => widget.invoice != null;
+
+  List<_InvoiceRow> get _filteredRows {
+    if (_searchQuery.isEmpty) return rows;
+    final query = _searchQuery.toLowerCase();
+    return rows.where((row) {
+      final nameMatch = row.item.name.toLowerCase().contains(query);
+      final hsnMatch = (row.item.hsnSac ?? '').toLowerCase().contains(query);
+      return nameMatch || hsnMatch;
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -74,6 +91,12 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         invoice.items.map((item) => _InvoiceRow.fromInvoiceItem(item)),
       );
 
+      // Load advance fields
+      if (invoice.advanceAmount > 0) {
+        _advanceController.text = invoice.advanceAmount.toStringAsFixed(2);
+      }
+      _selectedPaymentMethod = invoice.paymentMethod;
+
       // Load existing reminder if editing
       final reminder = Get.find<ReminderController>().getReminderByInvoiceId(
         invoice.invoiceId,
@@ -88,11 +111,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   @override
   void dispose() {
-    qtyController.dispose();
-    rateController.dispose();
+    _advanceController.dispose();
     _reminderTitleController.dispose();
     _reminderNotesController.dispose();
-    _itemFocusNode.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -187,7 +209,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     final existing = reminderCtrl.getReminderByInvoiceId(invoiceId);
 
     if (title.isEmpty) {
-      // If title is empty and a reminder exists, delete it
       if (existing != null) {
         reminderCtrl.deleteReminder(existing.reminderId);
       }
@@ -195,7 +216,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     }
 
     if (existing != null) {
-      // Update existing reminder
       existing.title = title;
       existing.notes = _reminderNotesController.text.trim().isNotEmpty
           ? _reminderNotesController.text.trim()
@@ -203,7 +223,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       existing.dueDate = _reminderDueDate;
       reminderCtrl.updateReminder(existing);
     } else {
-      // Create new reminder
       final reminder = Reminder(
         reminderId: IdGenerator.generateReminderId(),
         customerId: customerId,
@@ -219,35 +238,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     }
   }
 
-  void addToInvoice() {
-    if (selectedItem == null || qty <= 0 || rate < 0) return;
-
-    final baseAmount = qty * rate;
-    final gstAmount = (baseAmount * selectedItem!.gst) / 100;
-
+  void _addRowToInvoice(_InvoiceRow row) {
     setState(() {
-      rows.add(
-        _InvoiceRow(
-          item: selectedItem!,
-          qty: qty,
-          rate: rate,
-          taxPercent: selectedItem!.gst,
-          taxAmount: gstAmount,
-        ),
-      );
-
-      // reset input only (NOT validation, NOT blocking)
-      selectedItem = null;
-      qty = 1;
-      rate = 0;
-      qtyController.text = "1";
-      rateController.clear();
-      _itemSelectorVersion++;
-    });
-
-    // Refocus the item selector after adding
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _itemFocusNode.requestFocus();
+      rows.add(row);
     });
   }
 
@@ -267,6 +260,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         taxPercent: r.taxPercent,
         taxAmount: r.taxAmount,
         totalAmount: r.totalAmount,
+        discount: r.discount,
+        discountIsPercent: r.discountIsPercent,
       );
     }).toList();
 
@@ -277,6 +272,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       dateTime: widget.invoice?.dateTime ?? DateTime.now(),
       items: invoiceItems,
       grandTotal: grandTotal,
+      advanceAmount: advanceAmount,
+      paymentMethod: _selectedPaymentMethod,
     );
 
     if (isEditing) {
@@ -288,9 +285,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       );
       Get.snackbar(
         margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-
         "Invoice Updated",
-
         "Invoice ${invoice.invoiceId} updated successfully",
         snackPosition: SnackPosition.BOTTOM,
       );
@@ -308,13 +303,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       rows.clear();
       selectedCustomer = null;
       selectedVehicle = null;
-      selectedItem = null;
-      qty = 1;
-      rate = 0;
-      qtyController.text = "1";
-      rateController.clear();
+      _advanceController.clear();
       _customerSelectorVersion++;
-      _itemSelectorVersion++;
     });
 
     Get.snackbar(
@@ -549,23 +539,62 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
-  Widget _mobileAddItemButton() {
-    return cButton(
-      () {
-        setState(() {
-          qty = int.tryParse(qtyController.text) ?? 1;
-          rate = double.tryParse(rateController.text) ?? 0;
-        });
-
-        addToInvoice();
-      },
-      "Add Item",
-      true,
+  Widget _mobileAdvanceSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Advance Amount (Optional)",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: AppTextField(
+                hintText: 'Enter advance amount',
+                controller: _advanceController,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedPaymentMethod,
+                    isExpanded: true,
+                    items: _paymentMethods
+                        .map(
+                          (m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m, style: const TextStyle(fontSize: 14)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedPaymentMethod = v);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _mobileItemsList() {
-    if (rows.isEmpty) {
+    if (_filteredRows.isEmpty && rows.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(20),
@@ -574,10 +603,19 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       );
     }
 
+    if (_filteredRows.isEmpty && rows.isNotEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text("No items found"),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(rows.length, (i) {
-        final r = rows[i];
+      children: List.generate(_filteredRows.length, (i) {
+        final r = _filteredRows[i];
         return _itemCard(r, i);
       }),
     );
@@ -586,49 +624,62 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   Widget _itemCard(_InvoiceRow r, int index) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${r.item.name} (${r.item.type})",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+      child: InkWell(
+        onTap: () => _openAddItemPopup(editIndex: index),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade400),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${r.item.name} (${r.item.type})",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                        GestureDetector(
+                          onTap: () {
+                            _deleteRow(index);
+                          },
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "Qty: ${r.qty} | Rate: ${r.rate}",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade900,
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          _deleteRow(index);
-                        },
-                        child: Icon(Icons.delete_outline, color: Colors.black),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    "Qty: ${r.qty} | Rate: ${r.rate}",
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade900),
-                  ),
-                  Text(
-                    "Tax: ${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
-                  ),
-                  Text("Total: ${r.totalAmount.toStringAsFixed(2)}"),
-                ],
+                    ),
+                    Text(
+                      "Tax: ${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
+                    ),
+                    Text("Total: ${r.totalAmount.toStringAsFixed(2)}"),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -650,20 +701,82 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _mobileBottomBar() {
+    final hasAdvance = advanceAmount > 0;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Text(
-              "Total: Rs. ${grandTotal.toStringAsFixed(2)}",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          if (hasAdvance) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Grand Total", style: const TextStyle(fontSize: 14)),
+                Text(
+                  "Rs. ${grandTotal.toStringAsFixed(2)}",
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
             ),
-          ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Advance ($_selectedPaymentMethod):",
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+                Text(
+                  "- Rs. ${advanceAmount.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Remaining",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Text(
+                  "Rs. ${remainingAmount.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: remainingAmount < 0 ? Colors.red : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Total: ",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Text(
+                  "Rs. ${grandTotal.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ],
           cButton(saveInvoice, isEditing ? "Update" : "Save", true),
         ],
       ),
@@ -680,11 +793,16 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           const SizedBox(height: 12),
           _mobileVehicleSelector(),
           const SizedBox(height: 12),
-          _addItem(),
-          _mobileAddItemButton(),
+          _mobileAdvanceSection(),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: cButton(_openAddItemPopup, 'Add Item', true),
+          ),
+          const SizedBox(height: 12),
+          _buildItemSearchBar(),
           const SizedBox(height: 12),
           _mobileItemsList(),
-          // const SizedBox(height: 80),
         ],
       ),
     );
@@ -694,134 +812,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: _mobileReminderSection(),
-    );
-  }
-
-  Widget _addItem() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("Items", style: TextStyle(fontWeight: FontWeight.w600)),
-            InkWell(
-              onTap: () async {
-                await showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) {
-                    return DraggableScrollableSheet(
-                      expand: false,
-                      initialChildSize: 0.80,
-                      minChildSize: 0.80,
-                      maxChildSize: 0.92,
-                      shouldCloseOnMinExtent: true,
-                      builder: (context, scrollController) {
-                        return AddItemDialog(
-                          scrollController: scrollController,
-                        );
-                      },
-                    );
-                  },
-                );
-                Get.find<ItemController>().update();
-                setState(() {
-                  _itemSelectorVersion++;
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 3,
-                  ),
-                  child: Text('Add New Item', style: TextStyle(fontSize: 9)),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        AppSelector<Item>(
-          key: ValueKey('mobile_item_$_itemSelectorVersion'),
-          focusNode: _itemFocusNode,
-          showAbove: true,
-          items: Get.find<ItemController>().items,
-          initialItem: selectedItem,
-          hintText: "Select Item",
-          displayText: (i) => i.name,
-          searchText: (i) => i.name,
-          itemBuilder: (i) => Text(i.name),
-          onSelected: (i) {
-            setState(() {
-              selectedItem = i;
-              rate = i.price ?? 0;
-              rateController.text = rate.toString();
-            });
-          },
-        ),
-        SizedBox(height: 15),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: qtyController,
-                keyboardType: TextInputType.number,
-                onChanged: (v) {
-                  qty = int.tryParse(v) ?? 1;
-                },
-
-                decoration: const InputDecoration(
-                  labelText: "Qty",
-                  labelStyle: TextStyle(color: Colors.black),
-                  focusColor: Colors.black,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(4)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black26),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1.5),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 10),
-
-            Expanded(
-              child: TextField(
-                controller: rateController,
-                keyboardType: TextInputType.number,
-                onChanged: (v) {
-                  rate = double.tryParse(v) ?? 0;
-                },
-                decoration: const InputDecoration(
-                  labelText: "Rate",
-                  labelStyle: TextStyle(color: Colors.black),
-                  border: OutlineInputBorder(),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black26),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black, width: 1.5),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 15),
-      ],
     );
   }
 
@@ -838,7 +828,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
         const SizedBox(height: 10),
 
-        // TITLE
         const Text("Title", style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         TextField(
@@ -851,7 +840,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
         const SizedBox(height: 14),
 
-        // DUE DATE
         Row(
           children: [
             const Text(
@@ -883,7 +871,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
         const SizedBox(height: 14),
 
-        // NOTES
         const Text("Notes", style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
 
@@ -936,9 +923,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             const SizedBox(height: 16),
             _buildVehicleSelector(),
             const SizedBox(height: 16),
-            _buildItemSelector(),
-            const SizedBox(height: 16),
-            _buildQtyRateRow(),
+            _buildAdvanceSection(),
             const SizedBox(height: 20),
             _buildAddItemButton(),
             const SizedBox(height: 25),
@@ -1028,93 +1013,115 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
-  Widget _buildItemSelector() {
+  Widget _buildAdvanceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Item', style: TextStyle(fontWeight: FontWeight.w500)),
+        const Text(
+          'Advance Amount (Optional)',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
         const SizedBox(height: 8),
-        AppSelector<Item>(
-          key: ValueKey('item_$_itemSelectorVersion'),
-          items: Get.find<ItemController>().items,
-          initialItem: selectedItem,
-          hintText: 'Select Item',
-          displayText: (i) => i.name,
-          searchText: (i) => i.name,
-          itemBuilder: (i) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(i.name),
-              Text(
-                'Rs. ${i.price ?? 0}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-            ],
+        AppTextField(
+          hintText: 'Enter advance amount',
+          controller: _advanceController,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black26),
+            borderRadius: BorderRadius.circular(8),
           ),
-          onSelected: (i) {
-            setState(() {
-              selectedItem = i;
-              qty = 1;
-              qtyController.text = "1";
-              rate = i.price ?? 0;
-              rateController.text = rate.toString();
-            });
-          },
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedPaymentMethod,
+              isExpanded: true,
+              items: _paymentMethods
+                  .map(
+                    (m) => DropdownMenuItem(
+                      value: m,
+                      child: Text(m, style: const TextStyle(fontSize: 14)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _selectedPaymentMethod = v);
+              },
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildQtyRateRow() {
-    return Row(
-      children: [
-        Expanded(child: _qtyField()),
-        const SizedBox(width: 10),
-        Expanded(child: _rateField()),
-      ],
-    );
-  }
+  Future<void> _openAddItemPopup({int? editIndex}) async {
+    Map<String, dynamic>? initialData;
+    if (editIndex != null && editIndex < rows.length) {
+      final r = rows[editIndex];
+      initialData = {
+        'item': r.item,
+        'qty': r.qty,
+        'rate': r.rate,
+        'taxPercent': r.taxPercent,
+        'taxAmount': r.taxAmount,
+        'discount': r.discount,
+        'discountIsPercent': r.discountIsPercent,
+      };
+    }
 
-  Widget _qtyField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Quantity", style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: qtyController,
-          keyboardType: TextInputType.number,
-          onChanged: (v) {
-            qty = int.tryParse(v) ?? 1;
-          },
-          decoration: _inputDecoration(),
-        ),
-      ],
-    );
-  }
+    final result = await AddItemPopup.show(context, initialData: initialData);
 
-  Widget _rateField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Rate", style: TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: rateController,
-          keyboardType: TextInputType.number,
-          onChanged: (v) {
-            rate = double.tryParse(v) ?? 0;
-          },
-          decoration: _inputDecoration(),
-        ),
-      ],
+    if (result == null) return;
+
+    final row = _InvoiceRow(
+      item: result['item'] as Item,
+      qty: result['qty'] as int,
+      rate: (result['rate'] as num).toDouble(),
+      taxPercent: (result['taxPercent'] as num).toDouble(),
+      taxAmount: (result['taxAmount'] as num).toDouble(),
+      discount: (result['discount'] as num).toDouble(),
+      discountIsPercent: result['discountIsPercent'] as bool,
     );
+
+    if (editIndex != null) {
+      setState(() {
+        rows[editIndex] = row;
+      });
+    } else {
+      _addRowToInvoice(row);
+    }
   }
 
   Widget _buildAddItemButton() {
     return SizedBox(
       width: double.infinity,
-      child: cButton(addToInvoice, 'Add Item', true),
+      child: cButton(_openAddItemPopup, 'Add Item', true),
+    );
+  }
+
+  Widget _buildItemSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search by item name or HSN/SAC',
+          prefixIcon: const Icon(Icons.search, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+      ),
     );
   }
 
@@ -1212,6 +1219,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           children: [
             _buildInvoiceHeader(),
             const SizedBox(height: 20),
+            _buildItemSearchBar(),
+            const SizedBox(height: 12),
             _buildInvoiceTable(),
             const SizedBox(height: 15),
             _buildGrandTotal(),
@@ -1239,56 +1248,62 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _buildInvoiceTable() {
-    if (rows.isEmpty) {
+    if (_filteredRows.isEmpty) {
       return const Expanded(child: Center(child: Text("No items added")));
     }
 
     return Expanded(
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SingleChildScrollView(
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text("Sr")),
-              DataColumn(label: Text("Item")),
-              DataColumn(label: Text("HSN")),
-              DataColumn(label: Text("Qty")),
-              DataColumn(label: Text("Rate")),
-              DataColumn(label: Text("Tax")),
-              DataColumn(label: Text("Total")),
-              DataColumn(label: Text("Action")),
-            ],
-            rows: List.generate(rows.length, (i) {
-              final r = rows[i];
-              return DataRow(
-                cells: [
-                  DataCell(Text("${i + 1}")),
-                  DataCell(Text(r.item.name)),
-                  DataCell(Text(r.item.hsnSac ?? "-")),
-                  DataCell(Text("${r.qty}")),
-                  DataCell(Text("${r.rate}")),
-                  DataCell(
-                    Text(
-                      "${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
+        child: ScrollConfiguration(
+          behavior: const ScrollBehavior().copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            child: DataTable(
+              showCheckboxColumn: false,
+              columns: const [
+                DataColumn(label: Text("Sr")),
+                DataColumn(label: Text("Item")),
+                DataColumn(label: Text("HSN")),
+                DataColumn(label: Text("Qty")),
+                DataColumn(label: Text("Rate")),
+                DataColumn(label: Text("Tax")),
+                DataColumn(label: Text("Total")),
+                DataColumn(label: Text("Action")),
+              ],
+              rows: List.generate(_filteredRows.length, (i) {
+                final r = _filteredRows[i];
+                return DataRow(
+                  onSelectChanged: (_) => _openAddItemPopup(editIndex: i),
+                  cells: [
+                    DataCell(Text("${i + 1}")),
+                    DataCell(Text(r.item.name)),
+                    DataCell(Text(r.item.hsnSac ?? "-")),
+                    DataCell(Text("${r.qty}")),
+                    DataCell(Text("${r.rate}")),
+                    DataCell(
+                      Text(
+                        "${r.taxAmount.toStringAsFixed(2)} (${r.taxPercent}%)",
+                      ),
                     ),
-                  ),
-                  DataCell(Text(r.totalAmount.toStringAsFixed(2))),
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          rows.removeAt(i);
-                        });
-                      },
+                    DataCell(Text(r.totalAmount.toStringAsFixed(2))),
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            rows.removeAt(i);
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -1296,6 +1311,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _buildGrandTotal() {
+    final hasAdvance = advanceAmount > 0;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -1303,17 +1319,72 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            "Grand Total",
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          Text(
-            "Rs. ${grandTotal.toStringAsFixed(2)}",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
+          if (hasAdvance) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Grand Total",
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                ),
+                Text("Rs. ${grandTotal.toStringAsFixed(2)}", style: const TextStyle(fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Advance ($_selectedPaymentMethod):",
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                ),
+                Text(
+                  "- Rs. ${advanceAmount.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Divider(color: Colors.grey.shade400),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Remaining",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Text(
+                  "Rs. ${remainingAmount.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: remainingAmount < 0 ? Colors.red : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ] else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Grand Total",
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  "Rs. ${grandTotal.toStringAsFixed(2)}",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -1321,12 +1392,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   Widget _buildVerticalDivider() {
     return Container(width: 1, color: Colors.grey.shade300);
-  }
-
-  InputDecoration _inputDecoration() {
-    return InputDecoration(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-    );
   }
 }
 
@@ -1339,6 +1404,8 @@ class _InvoiceRow {
   final double rate;
   final double taxPercent;
   final double taxAmount;
+  final double discount;
+  final bool discountIsPercent;
 
   _InvoiceRow({
     required this.item,
@@ -1346,6 +1413,8 @@ class _InvoiceRow {
     required this.rate,
     required this.taxPercent,
     required this.taxAmount,
+    this.discount = 0,
+    this.discountIsPercent = false,
   });
 
   factory _InvoiceRow.fromInvoiceItem(InvoiceItem item) {
@@ -1362,8 +1431,28 @@ class _InvoiceRow {
       rate: item.rate,
       taxPercent: item.taxPercent,
       taxAmount: item.taxAmount,
+      discount: item.discount,
+      discountIsPercent: item.discountIsPercent,
     );
   }
 
-  double get totalAmount => (qty * rate) + taxAmount;
+  /// Exclusive price before tax = (qty * rate) - discount
+  double get exclusivePrice => (qty * rate) - discountAmount;
+
+  /// Discount amount (converted from percent if needed)
+  double get discountAmount {
+    if (discountIsPercent) {
+      return (qty * rate) * discount / 100;
+    }
+    return discount;
+  }
+
+  /// Taxable value after discount
+  double get taxableValue => (qty * rate) - discountAmount;
+
+  /// Total amount with tax
+  double get totalAmount {
+    final taxable = (qty * rate) - discountAmount;
+    return taxable + taxAmount;
+  }
 }

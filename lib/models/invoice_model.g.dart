@@ -26,13 +26,15 @@ class InvoiceAdapter extends TypeAdapter<Invoice> {
       updatedAt: fields[6] as DateTime?,
       isDeleted: fields[7] as bool,
       syncStatus: fields[8] as SyncStatus,
+      advanceAmount: fields[9] as double,
+      paymentMethod: fields[10] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Invoice obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.invoiceId)
       ..writeByte(1)
@@ -50,7 +52,11 @@ class InvoiceAdapter extends TypeAdapter<Invoice> {
       ..writeByte(7)
       ..write(obj.isDeleted)
       ..writeByte(8)
-      ..write(obj.syncStatus);
+      ..write(obj.syncStatus)
+      ..writeByte(9)
+      ..write(obj.advanceAmount)
+      ..writeByte(10)
+      ..write(obj.paymentMethod);
   }
 
   @override
@@ -84,13 +90,15 @@ class InvoiceItemAdapter extends TypeAdapter<InvoiceItem> {
       taxAmount: fields[6] as double,
       totalAmount: fields[7] as double,
       type: fields[8] as String,
+      discount: fields[9] as double,
+      discountIsPercent: fields[10] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, InvoiceItem obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.itemId)
       ..writeByte(1)
@@ -108,7 +116,11 @@ class InvoiceItemAdapter extends TypeAdapter<InvoiceItem> {
       ..writeByte(7)
       ..write(obj.totalAmount)
       ..writeByte(8)
-      ..write(obj.type);
+      ..write(obj.type)
+      ..writeByte(9)
+      ..write(obj.discount)
+      ..writeByte(10)
+      ..write(obj.discountIsPercent);
   }
 
   @override
