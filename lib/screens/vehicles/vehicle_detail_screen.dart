@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
@@ -786,10 +787,39 @@ class VehicleDetailScreen extends StatelessWidget {
                 trailing: Row(
                   // mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      '₹${invoice.grandTotal.toStringAsFixed(0)}',
+                    Column(
+                      children: [
+                        Text(
+                          '₹${invoice.grandTotal.toStringAsFixed(0)}',
 
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 5),
+                        Container(
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: invoice.paymentStatus.color.withOpacity(0.1),
+
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            child: Center(
+                              child: Text(
+                                invoice.paymentStatus.label,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: invoice.paymentStatus.color,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
 
                     // const SizedBox(width: 5),

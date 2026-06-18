@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'package:tcs/controllers/payment_controller.dart';
+import 'package:tcs/models/invoice_payment_status.dart';
 
 import '../database/hive_boxes.dart';
 import '../models/invoice_model.dart';
@@ -79,6 +81,30 @@ class InvoiceController extends GetxController {
 
     invalidatePdfCache(invoiceId);
     update();
+  }
+
+  void updateInvoicePaymentStatus(String invoiceId) {
+    final invoice = invoiceBox.get(invoiceId);
+    if (invoice == null) return;
+
+    final paymentCtrl = Get.find<PaymentController>();
+    final paidAmount = paymentCtrl.getPaidAmountByInvoice(invoiceId);
+
+    if (paidAmount <= 0) {
+      invoice.paymentStatus = InvoicePaymentStatus.unpaid;
+    } else if (paidAmount >= invoice.grandTotal) {
+      invoice.paymentStatus = InvoicePaymentStatus.paid;
+    } else {
+      invoice.paymentStatus = InvoicePaymentStatus.partiallyPaid;
+    }
+
+    // Mark pending so Supabase sync picks up the status change
+    invoice.updatedAt = DateTime.now();
+    invoice.syncStatus = SyncStatus.pending;
+
+    invoiceBox.put(invoiceId, invoice);
+    update();
+    Get.find<SupabaseSyncService>().syncInvoices();
   }
 
   /// CALLED WHEN PULLING DATA FROM SUPABASE

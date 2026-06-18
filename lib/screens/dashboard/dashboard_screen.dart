@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
@@ -423,17 +424,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          SizedBox(height: 5),
+                          Container(
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: inv.paymentStatus.color.withOpacity(0.1),
 
-                          Text(
-                            formatDate(inv.dateTime),
-
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  inv.paymentStatus.label,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: inv.paymentStatus.color,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          // Text(
+                          //   formatDate(inv.dateTime),
+
+                          //   style: TextStyle(
+                          //     fontSize: 11,
+                          //     color: Colors.grey.shade600,
+                          //   ),
+                          // ),
+
+                          // const SizedBox(height: 8),
                         ],
                       ),
                       AppPopupMenu(

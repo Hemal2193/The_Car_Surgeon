@@ -186,7 +186,10 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
                           const SizedBox(height: 4),
                           Text(
                             _registrationError!,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ],
@@ -506,6 +509,8 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
       engineNumber: engineController.text.trim(),
 
       chassisNumber: chassisController.text.trim(),
+
+      odoMeter: odometerController.text.trim(),
     );
 
     if (isEditing) {

@@ -25,6 +25,8 @@ class IdResolver {
         await resolver._resolveMax('invoices', 'invoice_id', 'INV-');
     final maxReminder =
         await resolver._resolveMax('reminders', 'reminder_id', 'REM-');
+    final maxPayment =
+        await resolver._resolveMax('payments', 'payment_id', 'PAY-');
 
     if (maxCustomer != null) {
       IdGenerator.setInitialCustomerId(maxCustomer);
@@ -40,6 +42,9 @@ class IdResolver {
     }
     if (maxReminder != null) {
       IdGenerator.setInitialReminderId(maxReminder);
+    }
+    if (maxPayment != null) {
+      IdGenerator.setInitialPaymentId(maxPayment);
     }
   }
 

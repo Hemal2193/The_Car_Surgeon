@@ -107,4 +107,25 @@ class IdGenerator {
 
     return 'REM-${currentNumber.toString().padLeft(4, '0')}';
   }
+
+  /// Seeds the payment counter so the next ID continues from [maxValue].
+  static void setInitialPaymentId(int maxValue) {
+    final settingsBox = Hive.box(HiveBoxes.settings);
+    final existing = settingsBox.get('payment_counter', defaultValue: 0);
+    if (maxValue > existing) {
+      settingsBox.put('payment_counter', maxValue);
+    }
+  }
+
+  static String generatePaymentId() {
+    final settingsBox = Hive.box(HiveBoxes.settings);
+
+    int currentNumber = settingsBox.get('payment_counter', defaultValue: 0);
+
+    currentNumber++;
+
+    settingsBox.put('payment_counter', currentNumber);
+
+    return 'PAY-${currentNumber.toString().padLeft(4, '0')}';
+  }
 }

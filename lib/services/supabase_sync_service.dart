@@ -9,14 +9,17 @@ import '../controllers/vehicle_controller.dart';
 import '../controllers/item_controller.dart';
 import '../controllers/invoice_controller.dart';
 import '../controllers/reminder_controller.dart';
+import '../controllers/payment_controller.dart';
 
 import '../models/customer_model.dart';
 import '../models/vehicle_model.dart';
 import '../models/item_model.dart';
 import '../models/invoice_model.dart';
 import '../models/reminder_model.dart';
+import '../models/payment_model.dart';
 
 import '../models/sync_status.dart';
+import '../models/invoice_payment_status.dart';
 
 class SupabaseSyncService {
   final SupabaseClient supabase = Supabase.instance.client;
@@ -33,6 +36,7 @@ class SupabaseSyncService {
     'items': DateTime.fromMillisecondsSinceEpoch(0),
     'invoices': DateTime.fromMillisecondsSinceEpoch(0),
     'reminders': DateTime.fromMillisecondsSinceEpoch(0),
+    'payments': DateTime.fromMillisecondsSinceEpoch(0),
   };
 
   // =====================================================
@@ -110,6 +114,12 @@ class SupabaseSyncService {
           table: 'reminders',
           callback: (_) => syncReminders(),
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'payments',
+          callback: (_) => syncPayments(),
+        )
         .subscribe();
   }
 
@@ -126,6 +136,7 @@ class SupabaseSyncService {
       await syncItems();
       await syncInvoices();
       await syncReminders();
+      await syncPayments();
     } catch (e) {
       print("SYNC ERROR: $e");
     }
@@ -335,24 +346,25 @@ class SupabaseSyncService {
           'date_time': i.dateTime.toIso8601String(),
           'items': i.items
               .map(
-                  (e) => {
-                    'item_id': e.itemId,
-                    'name': e.name,
-                    'type': e.type,
-                    'hsn_sac': e.hsnSac,
-                    'qty': e.qty,
-                    'rate': e.rate,
-                    'tax_percent': e.taxPercent,
-                    'tax_amount': e.taxAmount,
-                    'total_amount': e.totalAmount,
-                    'discount': e.discount,
-                    'discount_is_percent': e.discountIsPercent,
-                  },
+                (e) => {
+                  'item_id': e.itemId,
+                  'name': e.name,
+                  'type': e.type,
+                  'hsn_sac': e.hsnSac,
+                  'qty': e.qty,
+                  'rate': e.rate,
+                  'tax_percent': e.taxPercent,
+                  'tax_amount': e.taxAmount,
+                  'total_amount': e.totalAmount,
+                  'discount': e.discount,
+                  'discount_is_percent': e.discountIsPercent,
+                },
               )
               .toList(),
           'grand_total': i.grandTotal,
           'advance_amount': i.advanceAmount,
           'payment_method': i.paymentMethod,
+          'payment_status': i.paymentStatus.name,
           'updated_at': i.updatedAt.toIso8601String(),
           'device_id': deviceId,
           'is_deleted': i.isDeleted,
@@ -396,6 +408,19 @@ class SupabaseSyncService {
         }).toList();
       }
 
+      final paymentStatusStr = r['payment_status'] as String?;
+      final InvoicePaymentStatus paymentStatus;
+      switch (paymentStatusStr) {
+        case 'paid':
+          paymentStatus = InvoicePaymentStatus.paid;
+          break;
+        case 'partiallyPaid':
+          paymentStatus = InvoicePaymentStatus.partiallyPaid;
+          break;
+        default:
+          paymentStatus = InvoicePaymentStatus.unpaid;
+      }
+
       final invoice =
           Invoice(
               invoiceId: r['invoice_id'],
@@ -406,6 +431,7 @@ class SupabaseSyncService {
               grandTotal: (r['grand_total'] ?? 0).toDouble(),
               advanceAmount: (r['advance_amount'] ?? 0).toDouble(),
               paymentMethod: r['payment_method'] ?? 'Cash',
+              paymentStatus: paymentStatus,
             )
             ..updatedAt = DateTime.parse(r['updated_at'])
             ..isDeleted = r['is_deleted'] ?? false
@@ -469,5 +495,53 @@ class SupabaseSyncService {
     }
 
     await _saveLastSync('reminders', DateTime.now());
+  }
+
+  // =====================================================
+  // PAYMENTS
+  // =====================================================
+  Future<void> syncPayments() async {
+    final controller = Get.find<PaymentController>();
+
+    final pending = controller.pendingPayments;
+
+    for (final p in pending) {
+      try {
+        await supabase.from('payments').upsert({
+          'payment_id': p.paymentId,
+          'invoice_id': p.invoiceId,
+          'date_time': p.dateTime.toIso8601String(),
+          'mode': p.mode,
+          'amount': p.amount,
+          'notes': p.notes,
+          'updated_at': p.updatedAt.toIso8601String(),
+          'device_id': deviceId,
+          'is_deleted': p.isDeleted,
+        });
+
+        controller.markAsSynced(p.paymentId);
+      } catch (e) {
+        print("Payment push error: $e");
+      }
+    }
+
+    final remote = await supabase
+        .from('payments')
+        .select()
+        .gte('updated_at', lastSync['payments']!.toIso8601String());
+
+    for (final r in remote) {
+      final payment = Payment(
+        paymentId: r['payment_id'],
+        invoiceId: r['invoice_id'],
+        dateTime: DateTime.parse(r['date_time']),
+        mode: r['mode'],
+        amount: (r['amount'] ?? 0).toDouble(),
+        notes: r['notes'],
+      );
+      controller.upsertFromRemote(payment);
+    }
+
+    await _saveLastSync('payments', DateTime.now());
   }
 }

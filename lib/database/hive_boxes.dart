@@ -9,6 +9,8 @@ class HiveBoxes {
 
   static const String invoices = 'invoices';
 
+  static const String payments = 'payments';
+
   static const reminders = 'reminders';
 
   static const String settings = 'settings';

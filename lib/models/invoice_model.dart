@@ -1,6 +1,7 @@
 import 'package:hive/hive.dart';
 
 import 'sync_status.dart';
+import 'invoice_payment_status.dart';
 
 part 'invoice_model.g.dart';
 
@@ -45,6 +46,9 @@ class Invoice extends HiveObject {
   @HiveField(10)
   String paymentMethod;
 
+  @HiveField(11)
+  InvoicePaymentStatus paymentStatus;
+
   Invoice({
     required this.invoiceId,
     required this.customerId,
@@ -58,6 +62,7 @@ class Invoice extends HiveObject {
     this.syncStatus = SyncStatus.pending,
     this.advanceAmount = 0,
     this.paymentMethod = 'Cash',
+    this.paymentStatus = InvoicePaymentStatus.unpaid,
   }) : updatedAt = updatedAt ?? DateTime.now();
 }
 

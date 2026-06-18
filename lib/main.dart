@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcs/controllers/payment_controller.dart';
+import 'package:tcs/models/payment_model.dart';
 import 'package:tcs/models/sync_status.dart';
 import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:window_manager/window_manager.dart';
@@ -21,6 +23,7 @@ import 'database/id_resolver.dart';
 
 import 'models/customer_model.dart';
 import 'models/invoice_model.dart';
+import 'models/invoice_payment_status.dart';
 import 'models/item_model.dart';
 import 'models/reminder_model.dart';
 import 'models/vehicle_model.dart';
@@ -84,11 +87,21 @@ Future<void> main() async {
     Hive.registerAdapter(SyncStatusAdapter());
   }
 
+  if (!Hive.isAdapterRegistered(7)) {
+    Hive.registerAdapter(PaymentAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(51)) {
+    Hive.registerAdapter(InvoicePaymentStatusAdapter());
+  }
+
   // OPEN BOXES
   await Hive.openBox<Customer>(HiveBoxes.customers);
   await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
   await Hive.openBox<Item>(HiveBoxes.items);
+
   await Hive.openBox<Invoice>(HiveBoxes.invoices);
+  await Hive.openBox<Payment>(HiveBoxes.payments);
   await Hive.openBox<Reminder>(HiveBoxes.reminders);
   await Hive.openBox(HiveBoxes.settings);
 
@@ -101,6 +114,7 @@ Future<void> main() async {
   Get.put(ItemController(), permanent: true);
   Get.put(VehicleController(), permanent: true);
   Get.put(InvoiceController(), permanent: true);
+  Get.put(PaymentController(), permanent: true);
   Get.put(ReminderController(), permanent: true);
 
   // CACHE

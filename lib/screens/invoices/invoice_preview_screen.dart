@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
+import 'package:tcs/controllers/payment_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
+import 'package:tcs/database/id_generator.dart';
+import 'package:tcs/models/payment_model.dart';
 import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/services/invoice_pdf_preview.dart';
 import 'package:tcs/utils/responsive.dart';
 
+import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import '../../controllers/customer_controller.dart';
 import '../../controllers/invoice_controller.dart';
@@ -199,6 +203,20 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                             SizedBox(
                               width: double.infinity,
                               child: cButton(
+                                () {
+                                  _showPaymentCollectionDialog(
+                                    context,
+                                    invoice,
+                                  );
+                                },
+                                'Collect Payment',
+                                true,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: cButton(
                                 () async {
                                   await InvoicePdfService.generateInvoicePdf(
                                     invoice,
@@ -355,7 +373,7 @@ Widget _buildMobileInvoicePreview(
 
                     const SizedBox(height: 15),
 
-                    _actionButtons(invoice),
+                    _actionButtons(context, invoice),
                   ],
                 ),
               ),
@@ -451,7 +469,7 @@ Widget _financialSummaryCard(double subtotal, double tax, double grandTotal) {
   );
 }
 
-Widget _actionButtons(Invoice invoice) {
+Widget _actionButtons(BuildContext context, Invoice invoice) {
   return Column(
     children: [
       cButton(
@@ -459,6 +477,16 @@ Widget _actionButtons(Invoice invoice) {
           Get.to(() => CreateInvoiceScreen(invoice: invoice));
         },
         "Edit Invoice",
+        true,
+      ),
+
+      const SizedBox(height: 10),
+
+      cButton(
+        () {
+          _showPaymentCollectionDialog(context, invoice);
+        },
+        "Collect Payment",
         true,
       ),
 
@@ -577,5 +605,351 @@ Widget _summaryRow(String label, double value, {bool bold = false}) {
         ),
       ],
     ),
+  );
+}
+
+void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
+  final paymentCtrl = Get.find<PaymentController>();
+  final invoiceCtrl = Get.find<InvoiceController>();
+
+  final amountController = TextEditingController();
+  final notesController = TextEditingController();
+  String selectedMode = 'Cash';
+  DateTime paymentDate = DateTime.now();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDesktop = MediaQuery.of(context).size.width > 700;
+
+          return Dialog(
+            backgroundColor: Colors.white,
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? 24 : 16,
+              vertical: 24,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isDesktop ? 500 : double.infinity,
+                maxHeight: 700,
+              ),
+              child: ScrollConfiguration(
+                behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(isDesktop ? 20 : 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ---------------- HEADER ----------------
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Collect Payment",
+                              style: TextStyle(
+                                fontSize: isDesktop ? 20 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ---------------- PAYMENT SUMMARY ----------------
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Invoice: ${invoice.invoiceId}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+
+                              Text(
+                                "Grand Total: ₹${invoice.grandTotal.toStringAsFixed(2)}",
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Text(
+                                "Advance: ₹${invoice.advanceAmount.toStringAsFixed(2)}",
+                              ),
+
+                              const Divider(height: 20),
+
+                              Text(
+                                "Balance: ₹${(invoice.grandTotal - invoice.advanceAmount).toStringAsFixed(2)}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ---------------- AMOUNT ----------------
+                        Row(
+                          children: [
+                            const Text(
+                              "Payment Amount",
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            SizedBox(width: 10),
+                            InkWell(
+                              onTap: () {
+                                amountController.text =
+                                    (invoice.grandTotal - invoice.advanceAmount)
+                                        .toStringAsFixed(2);
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsetsGeometry.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  child: Text(
+                                    "Full Payment",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        AppTextField(
+                          hintText: "Enter payment amount",
+                          controller: amountController,
+                          keyboardType: TextInputType.number,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ---------------- PAYMENT MODE ----------------
+                        const Text(
+                          "Payment Mode",
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedMode,
+                              isExpanded: true,
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Cash',
+                                  child: Text('Cash'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'UPI',
+                                  child: Text('UPI'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Bank Transfer',
+                                  child: Text('Bank Transfer'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Cheque',
+                                  child: Text('Cheque'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Card',
+                                  child: Text('Card'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Net Banking',
+                                  child: Text('Net Banking'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() {
+                                    selectedMode = value;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ---------------- DATE ----------------
+                        const Text(
+                          "Payment Date",
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: paymentDate,
+                              firstDate: DateTime.now().subtract(
+                                const Duration(days: 30),
+                              ),
+                              lastDate: DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              setDialogState(() {
+                                paymentDate = picked;
+                              });
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "${paymentDate.day.toString().padLeft(2, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.year}",
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ---------------- NOTES ----------------
+                        const Text(
+                          "Notes",
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        AppTextField(
+                          hintText: "Notes (optional)",
+                          controller: notesController,
+                          maxLines: 2,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ---------------- ACTION BUTTONS ----------------
+                        Row(
+                          children: [
+                            Expanded(
+                              child: cButton(
+                                () {
+                                  Navigator.pop(context);
+                                },
+                                "Cancel",
+                                false,
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            Expanded(
+                              child: cButton(
+                                () async {
+                                  final amount = double.tryParse(
+                                    amountController.text,
+                                  );
+
+                                  if (amount == null || amount <= 0) {
+                                    Get.snackbar(
+                                      "Error",
+                                      "Please enter a valid amount",
+                                      snackPosition: SnackPosition.BOTTOM,
+                                    );
+                                    return;
+                                  }
+
+                                  final payment = Payment(
+                                    paymentId: IdGenerator.generatePaymentId(),
+                                    invoiceId: invoice.invoiceId,
+                                    dateTime: paymentDate,
+                                    mode: selectedMode,
+                                    amount: amount,
+                                    notes: notesController.text.trim().isEmpty
+                                        ? null
+                                        : notesController.text.trim(),
+                                  );
+
+                                  await paymentCtrl.addPayment(payment);
+
+                                  invoiceCtrl.updateInvoicePaymentStatus(
+                                    invoice.invoiceId,
+                                  );
+
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+
+                                  Get.snackbar(
+                                    "Success",
+                                    "Payment collected successfully",
+                                    snackPosition: SnackPosition.BOTTOM,
+                                  );
+                                },
+                                "Collect",
+                                true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
   );
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tcs/models/invoice_model.dart';
+import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 import 'package:tcs/utils/responsive.dart';
@@ -12,7 +13,6 @@ import 'package:tcs/widgets/erp_mobile_tile.dart';
 import '../../controllers/invoice_controller.dart';
 import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
-
 import '../../widgets/adder_button.dart';
 import '../../widgets/app_popup_menu.dart';
 import '../../widgets/delete_confirmation_dialog.dart';
@@ -26,7 +26,7 @@ class InvoicesScreen extends StatefulWidget {
 
 class _InvoicesScreenState extends State<InvoicesScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String searchQuery = "";
+  String _searchQuery = "";
 
   @override
   void dispose() {
@@ -37,18 +37,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   String formatDate(DateTime dt) {
     String day = dt.day.toString().padLeft(2, '0');
     String month = dt.month.toString().padLeft(2, '0');
-    // Extracts the last 2 digits of the year
     String year = (dt.year % 100).toString().padLeft(2, '0');
-
     return "$day-$month-$year";
   }
 
   bool matchesSearch(Invoice inv, CustomerController cc) {
-    final q = searchQuery.toLowerCase();
-
+    if (_searchQuery.isEmpty) return true;
+    final q = _searchQuery.toLowerCase();
     final customerName =
         cc.getCustomerById(inv.customerId)?.name.toLowerCase() ?? "";
-
     return inv.invoiceId.toLowerCase().contains(q) ||
         customerName.contains(q) ||
         inv.dateTime.toString().toLowerCase().contains(q);
@@ -59,16 +56,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     if (Platform.isAndroid || Platform.isIOS) {
       SystemChrome.setSystemUIOverlayStyle(
         const SystemUiOverlayStyle(
-          statusBarColor: Colors.white, // background
-          statusBarIconBrightness: Brightness.dark, // Android icons
-          statusBarBrightness: Brightness.light, // iOS icons
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
         ),
       );
     }
     if (Responsive.isDesktop(context)) {
       return _buildDesktopInvoices();
     }
-
     return _buildMobileInvoices();
   }
 
@@ -77,7 +73,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          /// HEADER
           Row(
             children: [
               const Text(
@@ -93,14 +88,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          /// SEARCH
           TextField(
             controller: _searchController,
             onChanged: (value) {
-              setState(() => searchQuery = value);
+              setState(() => _searchQuery = value.trim().toLowerCase());
             },
             decoration: InputDecoration(
               hintText: 'Search invoice...',
@@ -110,10 +102,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          /// TABLE
           Expanded(
             child: GetBuilder<CustomerController>(
               builder: (customerController) {
@@ -155,28 +144,20 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                 DataColumn(label: Text("Customer")),
                                 DataColumn(label: Text("Vehicle")),
                                 DataColumn(label: Text("Items")),
-                                DataColumn(label: Text("Tax")),
                                 DataColumn(label: Text("Grand Total")),
+                                DataColumn(label: Text("Status")),
                                 DataColumn(label: Text("Actions")),
                               ],
                               rows: invoices.map((inv) {
                                 final customer = customerController
                                     .getCustomerById(inv.customerId);
-
                                 final vehicle = vehicleController
                                     .getVehicleById(inv.vehicleId);
-
                                 final customerName =
                                     customer?.name ?? "Unknown";
                                 final vehicleReg =
                                     vehicle?.registrationNumber ?? "Unknown";
-
                                 final itemsCount = inv.items.length;
-
-                                final totalTax = inv.items.fold<double>(
-                                  0.0,
-                                  (sum, item) => sum + item.taxAmount,
-                                );
 
                                 return DataRow(
                                   onSelectChanged: (selected) {
@@ -197,21 +178,37 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                         ),
                                       ),
                                     ),
-
                                     DataCell(Text(formatDate(inv.dateTime))),
-
                                     DataCell(Text(customerName)),
-
                                     DataCell(Text(vehicleReg)),
-
                                     DataCell(Text(itemsCount.toString())),
-
-                                    DataCell(Text(totalTax.toStringAsFixed(2))),
-
                                     DataCell(
                                       Text(inv.grandTotal.toStringAsFixed(2)),
                                     ),
-
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: inv.paymentStatus.color,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          inv.paymentStatus.label,
+                                          style: TextStyle(
+                                            color: inv.paymentStatus.color,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                     DataCell(
                                       AppPopupMenu(
                                         onEdit: () {
@@ -258,34 +255,33 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
+  // ================================================================
+  // MOBILE
+  // ================================================================
+
   Widget _buildMobileInvoices() {
-    return
-    // backgroundColor: Colors.transparent,
-    // extendBody: true,
-    // floatingActionButton: FloatingActionButton.extended(
-    //   label: const Text("Add Invoice"),
-    //   icon: const Icon(Icons.add),
-    //   backgroundColor: Colors.black,
-    //   foregroundColor: Colors.white,
-    //   onPressed: () {
-    //     Get.to(() => const CreateInvoiceScreen());
-    //   },
-    // ),
-    SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Column(
-          children: [
-            _buildMobileHeader(),
-
-            const SizedBox(height: 16),
-
-            _buildSearch(),
-
-            const SizedBox(height: 16),
-
-            Expanded(child: _buildMobileInvoiceList()),
-          ],
+    return SafeArea(
+      bottom: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Column(
+            children: [
+              _buildMobileHeader(),
+              const SizedBox(height: 16),
+              _buildSearch(),
+              const SizedBox(height: 16),
+              Expanded(child: _buildMobileInvoiceList()),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Get.to(() => const CreateInvoiceScreen());
+          },
+          label: const Text("Create Invoice"),
+          icon: const Icon(Icons.add),
         ),
       ),
     );
@@ -305,16 +301,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return TextField(
       controller: _searchController,
       onChanged: (value) {
-        setState(() {
-          searchQuery = value;
-        });
+        setState(() => _searchQuery = value.trim().toLowerCase());
       },
       decoration: InputDecoration(
-        hintText: 'Search invoice...',
+        hintText: 'Search invoices...',
         prefixIcon: const Icon(Icons.search),
-
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -327,7 +319,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return GetBuilder<CustomerController>(
       builder: (customerController) {
         return GetBuilder<VehicleController>(
-          builder: (_) {
+          builder: (vehicleController) {
             return GetBuilder<InvoiceController>(
               builder: (invoiceController) {
                 final invoices = invoiceController.invoices
@@ -335,14 +327,12 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     .toList();
 
                 if (invoices.isEmpty) {
-                  return const Center(child: Text('No invoices found'));
+                  return const Center(child: Text("No invoices found"));
                 }
 
                 return ListView.builder(
-                  padding: EdgeInsets.only(bottom: 150),
-
+                  padding: const EdgeInsets.only(bottom: 120),
                   itemCount: invoices.length,
-
                   itemBuilder: (context, index) {
                     return _buildInvoiceTile(
                       invoices[invoices.length - index - 1],
@@ -359,13 +349,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   Widget _buildInvoiceTile(Invoice inv) {
     final customerController = Get.find<CustomerController>();
-
     final vehicleController = Get.find<VehicleController>();
-
     final customer = customerController.getCustomerById(inv.customerId);
-
     final vehicle = vehicleController.getVehicleById(inv.vehicleId);
-
     final tax = inv.items.fold<double>(
       0.0,
       (sum, item) => sum + item.taxAmount,
@@ -375,65 +361,66 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       onTap: () {
         Get.to(() => InvoicePreviewScreen(invoiceId: inv.invoiceId));
       },
-
       leading: CircleAvatar(
         backgroundColor: Colors.grey.shade100,
-
         child: const Icon(Icons.receipt_long, color: Colors.black87),
       ),
-
       title: inv.invoiceId,
-
       subtitles: [
         customer?.name ?? 'Unknown Customer',
-
         vehicle?.registrationNumber ?? 'Unknown Vehicle',
-
         '${inv.items.length} items • Tax ₹${tax.toStringAsFixed(0)}',
       ],
-
       trailing: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             children: [
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
               Text(
                 '₹${inv.grandTotal.toStringAsFixed(0)}',
-
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
-              Text(
-                formatDate(inv.dateTime),
-
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              const SizedBox(height: 5),
+              Container(
+                width: 50,
+                decoration: BoxDecoration(
+                  color: inv.paymentStatus.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Center(
+                    child: Text(
+                      inv.paymentStatus.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: inv.paymentStatus.color,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-
-              const SizedBox(height: 8),
             ],
           ),
           AppPopupMenu(
             onEdit: () {
               Get.to(() => CreateInvoiceScreen(invoice: inv));
             },
-
             onDelete: () {
               showDialog(
                 context: context,
-
                 builder: (_) => DeleteConfirmationDialog(
                   title: 'Delete Invoice',
-
-                  message:
-                      'Are you sure you want to delete '
-                      '${inv.invoiceId}?',
-
+                  message: 'Are you sure you want to delete ${inv.invoiceId}?',
                   onDelete: () async {
                     await Get.find<InvoiceController>().deleteInvoice(
                       inv.invoiceId,
