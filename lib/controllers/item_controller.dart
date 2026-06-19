@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:tcs/controllers/invoice_controller.dart';
+import 'package:tcs/controllers/payment_controller.dart';
 
 import '../database/hive_boxes.dart';
 import '../models/item_model.dart';
@@ -116,11 +117,10 @@ class ItemController extends GetxController {
         final invoiceItem = invoice.items[i];
 
         if (invoiceItem.itemId == item.itemId) {
-          final newTaxAmount =
-              invoiceItem.qty * invoiceItem.rate * item.gst / 100;
+          final taxableAmount = invoiceItem.taxableAmount;
+          final newTaxAmount = taxableAmount * item.gst / 100;
 
-          final newTotalAmount =
-              (invoiceItem.qty * invoiceItem.rate) + newTaxAmount;
+          final newTotalAmount = taxableAmount + newTaxAmount;
 
           invoice.items[i] = InvoiceItem(
             itemId: invoiceItem.itemId,
@@ -132,6 +132,8 @@ class ItemController extends GetxController {
             taxPercent: item.gst,
             taxAmount: newTaxAmount,
             totalAmount: newTotalAmount,
+            discount: invoiceItem.discount,
+            discountIsPercent: invoiceItem.discountIsPercent,
           );
 
           invoiceChanged = true;
@@ -139,10 +141,12 @@ class ItemController extends GetxController {
       }
 
       if (invoiceChanged) {
-        invoice.grandTotal = invoice.items.fold(
-          0,
-          (sum, item) => sum + item.totalAmount,
-        );
+        final collectedAmount = Get.isRegistered<PaymentController>()
+            ? Get.find<PaymentController>().getPaidAmountByInvoice(
+                invoice.invoiceId,
+              )
+            : 0.0;
+        invoice.recalculateFinancials(collectedAmount: collectedAmount);
 
         invoice.updatedAt = DateTime.now();
         invoice.syncStatus = SyncStatus.pending;

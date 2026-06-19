@@ -138,13 +138,14 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           child: SingleChildScrollView(
                             child: DataTable(
                               showCheckboxColumn: false,
+                              columnSpacing: 40,
                               columns: const [
                                 DataColumn(label: Text("Invoice ID")),
                                 DataColumn(label: Text("Date")),
                                 DataColumn(label: Text("Customer")),
                                 DataColumn(label: Text("Vehicle")),
                                 DataColumn(label: Text("Items")),
-                                DataColumn(label: Text("Grand Total")),
+                                DataColumn(label: Text("Balance")),
                                 DataColumn(label: Text("Status")),
                                 DataColumn(label: Text("Actions")),
                               ],
@@ -183,7 +184,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     DataCell(Text(vehicleReg)),
                                     DataCell(Text(itemsCount.toString())),
                                     DataCell(
-                                      Text(inv.grandTotal.toStringAsFixed(2)),
+                                      Text(
+                                        inv.balanceAmount.toStringAsFixed(2),
+                                      ),
                                     ),
                                     DataCell(
                                       Container(
@@ -192,9 +195,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: inv.paymentStatus.color,
-                                          ),
+                                          color: inv.paymentStatus.color
+                                              .withOpacity(0.1),
+
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
@@ -282,6 +285,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           },
           label: const Text("Create Invoice"),
           icon: const Icon(Icons.add),
+          heroTag: null,
         ),
       ),
     );
@@ -331,7 +335,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 120),
+                  padding: const EdgeInsets.only(bottom: 150),
                   itemCount: invoices.length,
                   itemBuilder: (context, index) {
                     return _buildInvoiceTile(
@@ -379,7 +383,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             children: [
               const SizedBox(height: 5),
               Text(
-                '₹${inv.grandTotal.toStringAsFixed(0)}',
+                '₹${inv.balanceAmount.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

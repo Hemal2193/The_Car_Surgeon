@@ -16,6 +16,7 @@ import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
 import '../../controllers/item_controller.dart';
 import '../../controllers/invoice_controller.dart';
+import '../../controllers/payment_controller.dart';
 import '../../controllers/reminder_controller.dart';
 
 import '../../models/reminder_model.dart';
@@ -188,6 +189,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 0,
                                 (sum, inv) => sum + inv.grandTotal,
                               );
+                          final totalDiscount = invoiceCtrl.invoices
+                              .fold<double>(
+                                0,
+                                (sum, inv) => sum + inv.discount,
+                              );
+                          final totalAdvance = invoiceCtrl.invoices
+                              .fold<double>(
+                                0,
+                                (sum, inv) => sum + inv.advanceAmount,
+                              );
+                          final totalOutstanding = invoiceCtrl.invoices
+                              .fold<double>(
+                                0,
+                                (sum, inv) => sum + inv.balanceAmount,
+                              );
+                          final totalCollected = Get.find<PaymentController>()
+                              .allPayments
+                              .fold<double>(0, (sum, p) => sum + p.amount);
 
                           return _buildKpiRow(
                             customerCtrl.customers.length,
@@ -195,6 +214,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             itemCtrl.items.length,
                             invoiceCtrl.invoices.length,
                             totalRevenue,
+                            totalDiscount,
+                            totalAdvance,
+                            totalCollected,
+                            totalOutstanding,
                           );
                         },
                       );
@@ -281,6 +304,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     0,
                     (sum, inv) => sum + inv.grandTotal,
                   );
+                  final totalDiscount = invoiceCtrl.invoices.fold<double>(
+                    0,
+                    (sum, inv) => sum + inv.discount,
+                  );
+                  final totalAdvance = invoiceCtrl.invoices.fold<double>(
+                    0,
+                    (sum, inv) => sum + inv.advanceAmount,
+                  );
+                  final totalOutstanding = invoiceCtrl.invoices.fold<double>(
+                    0,
+                    (sum, inv) => sum + inv.balanceAmount,
+                  );
+                  final totalCollected = Get.find<PaymentController>()
+                      .allPayments
+                      .fold<double>(0, (sum, p) => sum + p.amount);
 
                   return Column(
                     children: [
@@ -337,11 +375,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 12),
 
                       _kpiCard(
-                        "Revenue",
+                        "Invoice Total",
                         "₹${totalRevenue.toStringAsFixed(2)}",
                         Icons.currency_rupee,
                         () {},
                         isRevenue: true,
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _kpiCard(
+                              "Discount",
+                              "₹${totalDiscount.toStringAsFixed(2)}",
+                              Icons.sell_outlined,
+                              () {},
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _kpiCard(
+                              "Advance",
+                              "₹${totalAdvance.toStringAsFixed(2)}",
+                              Icons.account_balance_wallet_outlined,
+                              () {},
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _kpiCard(
+                              "Collected",
+                              "₹${totalCollected.toStringAsFixed(2)}",
+                              Icons.payments_outlined,
+                              () {},
+                              isRevenue: true,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _kpiCard(
+                              "Outstanding",
+                              "₹${totalOutstanding.toStringAsFixed(2)}",
+                              Icons.pending_actions_outlined,
+                              () {},
+                              isRevenue: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   );
@@ -417,7 +503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           SizedBox(height: 5),
                           Text(
-                            '₹${inv.grandTotal.toStringAsFixed(0)}',
+                            '₹${inv.balanceAmount.toStringAsFixed(0)}',
 
                             style: const TextStyle(
                               fontSize: 16,
@@ -758,6 +844,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int totalItems,
     int totalInvoices,
     double totalRevenue,
+    double totalDiscount,
+    double totalAdvance,
+    double totalCollected,
+    double totalOutstanding,
   ) {
     return Row(
       children: [
@@ -901,7 +991,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GetBuilder<InvoiceController>(
       builder: (invoiceCtrl) {
         final customerCtrl = Get.find<CustomerController>();
-        final vehicleCtrl = Get.find<VehicleController>();
+        // final vehicleCtrl = Get.find<VehicleController>();
 
         final recentInvoices = invoiceCtrl.invoices.toList()
           ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
@@ -954,6 +1044,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     showCheckboxColumn: false,
+                    // columnSpacing: 40,
                     headingRowHeight: 36,
                     dataRowMinHeight: 36,
                     dataRowMaxHeight: 44,
@@ -979,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       DataColumn(
                         label: Text(
-                          "Vehicle",
+                          "Status",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -988,7 +1079,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       DataColumn(
                         label: Text(
-                          "Total",
+                          "Balance",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -1009,7 +1100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       final customer = customerCtrl.getCustomerById(
                         inv.customerId,
                       );
-                      final vehicle = vehicleCtrl.getVehicleById(inv.vehicleId);
+                      // final vehicle = vehicleCtrl.getVehicleById(inv.vehicleId);
                       return DataRow(
                         onSelectChanged: (selected) {
                           if (selected == true) {
@@ -1037,17 +1128,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           DataCell(
-                            Text(
-                              vehicle?.registrationNumber ?? "Unknown",
-                              style: const TextStyle(fontSize: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: inv.paymentStatus.color.withOpacity(0.1),
+
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                inv.paymentStatus.label,
+                                style: TextStyle(
+                                  color: inv.paymentStatus.color,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
-                          DataCell(
-                            Text(
-                              "₹${inv.grandTotal.toStringAsFixed(2)}",
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
+                          DataCell(Text(inv.balanceAmount.toStringAsFixed(2))),
                           DataCell(
                             Text(
                               "${inv.dateTime.day.toString().padLeft(2, '0')}-"

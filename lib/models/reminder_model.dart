@@ -6,20 +6,28 @@ part 'reminder_model.g.dart';
 
 @HiveType(typeId: 5)
 class Reminder extends HiveObject {
+  // ==========================================================
+  // BASIC
+  // ==========================================================
+
   @HiveField(0)
   String reminderId;
 
   @HiveField(1)
-  String customerId;
+  ReminderType type;
 
   @HiveField(2)
-  String vehicleId;
+  String customerId;
 
   @HiveField(3)
-  String? invoiceId;
+  String vehicleId;
 
   @HiveField(4)
-  DateTime dueDate;
+  String? invoiceId;
+
+  // ==========================================================
+  // REMINDER DETAILS
+  // ==========================================================
 
   @HiveField(5)
   String title;
@@ -28,33 +36,50 @@ class Reminder extends HiveObject {
   String? notes;
 
   @HiveField(7)
-  bool completed;
-
-  // ==========================
-  // SYNC FIELDS
-  // ==========================
+  DateTime dueDate;
 
   @HiveField(8)
-  DateTime updatedAt;
+  bool completed;
+
+  // ==========================================================
+  // SYNC
+  // ==========================================================
 
   @HiveField(9)
-  bool isDeleted;
+  DateTime createdAt;
 
   @HiveField(10)
+  DateTime updatedAt;
+
+  @HiveField(11)
+  bool isDeleted;
+
+  @HiveField(12)
   SyncStatus syncStatus;
 
   Reminder({
     required this.reminderId,
+    required this.type,
     required this.customerId,
     required this.vehicleId,
     this.invoiceId,
-    required this.dueDate,
     required this.title,
     this.notes,
+    required this.dueDate,
     this.completed = false,
-
+    DateTime? createdAt,
     DateTime? updatedAt,
     this.isDeleted = false,
     this.syncStatus = SyncStatus.pending,
-  }) : updatedAt = updatedAt ?? DateTime.now();
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+}
+
+@HiveType(typeId: 8)
+enum ReminderType {
+  @HiveField(0)
+  service,
+
+  @HiveField(1)
+  invoice,
 }

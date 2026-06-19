@@ -28,7 +28,10 @@ class AppSelectorOverlay {
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: onClose,
+                onTap: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  onClose();
+                },
                 child: Container(color: Colors.transparent),
               ),
             ),

@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:tcs/controllers/payment_controller.dart';
 import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/database/id_generator.dart';
+import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:tcs/models/payment_model.dart';
 import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/services/invoice_pdf_preview.dart';
@@ -55,6 +56,7 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
     builder: (invoiceController) {
       final customerCtrl = Get.find<CustomerController>();
       final vehicleCtrl = Get.find<VehicleController>();
+      final paymentCtrl = Get.find<PaymentController>();
 
       final Invoice? invoice = invoiceController.invoices.firstWhereOrNull(
         (i) => i.invoiceId == invoiceId,
@@ -88,6 +90,15 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
 
           final grandTotal = subtotal + totalTax;
 
+          //total collected payments
+          double totalCollected = 0;
+
+          for (var payment in paymentCtrl.allPayments) {
+            if (payment.invoiceId == invoice.invoiceId) {
+              totalCollected += payment.amount;
+            }
+          }
+
           return Scaffold(
             backgroundColor: Colors.white,
             body: Column(
@@ -108,153 +119,179 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                             right: BorderSide(color: Colors.grey.shade300),
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_back),
-                                  onPressed: () => Get.back(),
-                                ),
-                                const SizedBox(width: 5),
-                                const Text(
-                                  "Invoice Preview",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 25),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _infoField(
-                                    "Invoice ID",
-                                    invoice.invoiceId,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _infoField(
-                                    "Date",
-                                    "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
-                                        "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
-                                        "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _infoField(
-                                    "Customer",
-                                    customer?.name ?? "Unknown",
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _infoField(
-                                    "Due Date",
-                                    _formatShortDate(reminder?.dueDate),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            _infoField(
-                              "Vehicle",
-                              vehicle?.registrationNumber ?? "Unknown",
-                            ),
-                            const SizedBox(height: 25),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
+                        // Wrap the Column in SingleChildScrollView to allow scrolling
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  _summaryRow("Subtotal", subtotal),
-                                  _summaryRow("Tax", totalTax),
-                                  const Divider(),
-                                  _summaryRow(
-                                    "Grand Total",
-                                    grandTotal,
-                                    bold: true,
+                                  IconButton(
+                                    icon: const Icon(Icons.arrow_back),
+                                    onPressed: () => Get.back(),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Text(
+                                    "Invoice Preview",
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const Spacer(),
-                            SizedBox(
-                              width: double.infinity,
-                              child: cButton(
-                                () {
-                                  Get.to(
-                                    () => CreateInvoiceScreen(invoice: invoice),
-                                  );
-                                },
-                                'Edit Invoice',
-                                true,
+                              const SizedBox(height: 25),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _infoField(
+                                      "Invoice ID",
+                                      invoice.invoiceId,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _infoField(
+                                      "Date",
+                                      "${invoice.dateTime.day.toString().padLeft(2, '0')}-"
+                                          "${invoice.dateTime.month.toString().padLeft(2, '0')}-"
+                                          "${(invoice.dateTime.year % 100).toString().padLeft(2, '0')}",
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: cButton(
-                                () {
-                                  _showPaymentCollectionDialog(
-                                    context,
-                                    invoice,
-                                  );
-                                },
-                                'Collect Payment',
-                                true,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _infoField(
+                                      "Customer",
+                                      customer?.name ?? "Unknown",
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _infoField(
+                                      "Due Date",
+                                      _formatShortDate(reminder?.dueDate),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: cButton(
-                                () async {
-                                  await InvoicePdfService.generateInvoicePdf(
-                                    invoice,
-                                  );
-                                },
-                                'Download PDF',
-                                false,
+                              _infoField(
+                                "Vehicle",
+                                vehicle?.registrationNumber ?? "Unknown",
                               ),
-                            ),
+                              const SizedBox(height: 25),
+                              _paymentHistory(invoice),
 
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: cButton(
-                                () async {
-                                  final path =
-                                      await InvoicePdfService.shareInvoiceViaWhatsApp(
-                                        invoice,
-                                        customer,
-                                      );
-                                  if (path != null && context.mounted) {
-                                    Get.snackbar(
-                                      'WhatsApp',
-                                      'PDF copied. Press Ctrl + V in WhatsApp.',
-                                      snackPosition: SnackPosition.BOTTOM,
-                                      duration: const Duration(seconds: 6),
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 20,
-                                      ),
-                                    );
-                                  }
-                                },
-                                'Share via WhatsApp',
-                                false,
+                              // SPACER REPLACED: SingleChildScrollView needs fixed spacing, not Spacers
+                              // const SizedBox(height: 20),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _summaryRow("Subtotal", subtotal),
+                                    _summaryRow("Tax", totalTax),
+                                    _summaryRow(
+                                      "Grand Total",
+                                      grandTotal,
+                                      bold: true,
+                                    ),
+                                    const Divider(),
+
+                                    _summaryRow("Discount", invoice.discount),
+                                    _summaryRow(
+                                      "Advance",
+                                      invoice.advanceAmount,
+                                    ),
+                                    _summaryRow("Collected", totalCollected),
+
+                                    const Divider(),
+                                    _summaryRow(
+                                      "Balance",
+                                      invoice.balanceAmount,
+                                      bold: true,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+
+                              // SPACER REPLACED
+                              const SizedBox(height: 20),
+
+                              SizedBox(
+                                width: double.infinity,
+                                child: cButton(
+                                  () {
+                                    Get.to(
+                                      () =>
+                                          CreateInvoiceScreen(invoice: invoice),
+                                    );
+                                  },
+                                  'Edit Invoice',
+                                  true,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: cButton(
+                                  () {
+                                    _showPaymentCollectionDialog(
+                                      context,
+                                      invoice,
+                                    );
+                                  },
+                                  'Collect Payment',
+                                  true,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: cButton(
+                                  () async {
+                                    await InvoicePdfService.generateInvoicePdf(
+                                      invoice,
+                                    );
+                                  },
+                                  'Download PDF',
+                                  false,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: cButton(
+                                  () async {
+                                    final path =
+                                        await InvoicePdfService.shareInvoiceViaWhatsApp(
+                                          invoice,
+                                          customer,
+                                        );
+                                    if (path != null && context.mounted) {
+                                      Get.snackbar(
+                                        'WhatsApp',
+                                        'PDF copied. Press Ctrl + V in WhatsApp.',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        duration: const Duration(seconds: 6),
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 20,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  'Share via WhatsApp',
+                                  false,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       // =====================================================
@@ -290,6 +327,7 @@ Widget _buildMobileInvoicePreview(
     builder: (invoiceController) {
       final customerCtrl = Get.find<CustomerController>();
       final vehicleCtrl = Get.find<VehicleController>();
+      final paymentCtrl = Get.find<PaymentController>();
 
       final Invoice? invoice = invoiceController.invoices.firstWhereOrNull(
         (i) => i.invoiceId == invoiceId,
@@ -321,7 +359,21 @@ Widget _buildMobileInvoicePreview(
             totalTax += item.taxAmount;
           }
 
-          final grandTotal = subtotal + totalTax;
+          final grandTotal = invoice.grandTotal;
+          final advanceAmount = invoice.advanceAmount;
+          final balanceAmount = invoice.balanceAmount;
+          final discount = invoice.discount;
+          double totalCollected = 0.0;
+
+          final payments = paymentCtrl.getPaymentsByInvoiceId(
+            invoice.invoiceId,
+          );
+          if (payments.isNotEmpty) {
+            totalCollected = payments.fold<double>(
+              0,
+              (sum, p) => sum + p.amount,
+            );
+          }
 
           return Scaffold(
             backgroundColor: Colors.white,
@@ -369,7 +421,19 @@ Widget _buildMobileInvoicePreview(
 
                     const SizedBox(height: 20),
 
-                    _financialSummaryCard(subtotal, totalTax, grandTotal),
+                    _paymentHistoryCard(invoice),
+
+                    const SizedBox(height: 15),
+
+                    _financialSummaryCard(
+                      subtotal,
+                      totalTax,
+                      grandTotal,
+                      discount,
+                      totalCollected,
+                      advanceAmount,
+                      balanceAmount,
+                    ),
 
                     const SizedBox(height: 15),
 
@@ -450,7 +514,15 @@ Widget _quickInfoCard(
   );
 }
 
-Widget _financialSummaryCard(double subtotal, double tax, double grandTotal) {
+Widget _financialSummaryCard(
+  double subtotal,
+  double tax,
+  double grandTotal,
+  double discount,
+  double totalCollected,
+  double advanceAmount,
+  double balanceAmount,
+) {
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.all(16),
@@ -462,8 +534,15 @@ Widget _financialSummaryCard(double subtotal, double tax, double grandTotal) {
       children: [
         _summaryRow("Subtotal", subtotal),
         _summaryRow("Tax", tax),
-        const Divider(),
         _summaryRow("Grand Total", grandTotal, bold: true),
+        const Divider(),
+
+        _summaryRow("Discount", discount),
+        _summaryRow("Advance", advanceAmount),
+        _summaryRow("Collected", totalCollected),
+
+        const Divider(),
+        _summaryRow("Balance", balanceAmount, bold: true),
       ],
     ),
   );
@@ -608,6 +687,209 @@ Widget _summaryRow(String label, double value, {bool bold = false}) {
   );
 }
 
+String _formatPaymentDate(DateTime date) {
+  return "${date.day.toString().padLeft(2, '0')}-"
+      "${date.month.toString().padLeft(2, '0')}-"
+      "${(date.year % 100).toString().padLeft(2, '0')}";
+}
+
+// =====================================================
+// PAYMENT HISTORY – DESKTOP
+// =====================================================
+Widget _paymentHistory(Invoice invoice) {
+  final payments = Get.find<PaymentController>().getPaymentsByInvoiceId(
+    invoice.invoiceId,
+  );
+
+  if (payments.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Payment History",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        ...payments.map((p) {
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                // 1. Expanded or Flexible takes all available space on the left
+                Expanded(
+                  child: Text(
+                    _formatPaymentDate(p.dateTime),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+
+                // 2. Use SizedBox with a fixed width for the Amount/Mode section
+                SizedBox(
+                  width:
+                      80, // Adjust this width based on your max expected amount length
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.end, // Align text to the right
+                    children: [
+                      Text(
+                        "₹${p.amount.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          p.mode,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        //total payment collected(sum of all the collected payments for the invoice)
+        // Row(
+        //   mainAxisAlignment: MainAxisAlignment.end,
+        //   children: [
+        //     Text(
+        //       "Total Payment Collected: Rs. ${payments.fold<double>(0, (sum, p) => sum + p.amount)}",
+        //       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        //     ),
+        //   ],
+        // ),
+      ],
+    ),
+  );
+}
+
+// =====================================================
+// PAYMENT HISTORY – MOBILE
+// =====================================================
+Widget _paymentHistoryCard(Invoice invoice) {
+  final payments = Get.find<PaymentController>().getPaymentsByInvoiceId(
+    invoice.invoiceId,
+  );
+
+  if (payments.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        "Payment History",
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      const SizedBox(height: 8),
+      ...payments.map((p) {
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // 1. Expanded or Flexible takes all available space on the left
+              Expanded(
+                child: Text(
+                  _formatPaymentDate(p.dateTime),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+
+              // 2. Use SizedBox with a fixed width for the Amount/Mode section
+              SizedBox(
+                width:
+                    80, // Adjust this width based on your max expected amount length
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.end, // Align text to the right
+                  children: [
+                    Text(
+                      "₹${p.amount.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        p.mode,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+      //total payment collected(sum of all the collected payments for the invoice)
+      // Row(
+      //   mainAxisAlignment: MainAxisAlignment.end,
+      //   children: [
+      //     Text(
+      //       "Total Payment Collected: Rs. ${payments.fold<double>(0, (sum, p) => sum + p.amount)}",
+      //       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      //     ),
+      //   ],
+      // ),
+    ],
+  );
+}
+
 void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
   final paymentCtrl = Get.find<PaymentController>();
   final invoiceCtrl = Get.find<InvoiceController>();
@@ -623,6 +905,18 @@ void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
       return StatefulBuilder(
         builder: (context, setDialogState) {
           final isDesktop = MediaQuery.of(context).size.width > 700;
+
+          double totalCollected = 0.0;
+
+          final payments = paymentCtrl.getPaymentsByInvoiceId(
+            invoice.invoiceId,
+          );
+          if (payments.isNotEmpty) {
+            totalCollected = payments.fold<double>(
+              0,
+              (sum, p) => sum + p.amount,
+            );
+          }
 
           return Dialog(
             backgroundColor: Colors.white,
@@ -697,10 +991,23 @@ void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
                                 "Advance: ₹${invoice.advanceAmount.toStringAsFixed(2)}",
                               ),
 
+                              const SizedBox(height: 4),
+
+                              Text(
+                                "Discount: ₹${invoice.discount.toStringAsFixed(2)}",
+                              ),
+                              const SizedBox(height: 4),
+
+                              Text(
+                                "Collected: ₹${totalCollected.toStringAsFixed(2)}",
+                              ),
+
                               const Divider(height: 20),
 
                               Text(
-                                "Balance: ₹${(invoice.grandTotal - invoice.advanceAmount).toStringAsFixed(2)}",
+                                "Balance: ₹${(invoice.balanceAmount).toStringAsFixed(2)}",
+
+                                // "Balance: ₹${(invoice.grandTotal - invoice.advanceAmount).toStringAsFixed(2)}",
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
@@ -722,9 +1029,8 @@ void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
                             SizedBox(width: 10),
                             InkWell(
                               onTap: () {
-                                amountController.text =
-                                    (invoice.grandTotal - invoice.advanceAmount)
-                                        .toStringAsFixed(2);
+                                amountController.text = invoice.balanceAmount
+                                    .toStringAsFixed(2);
                               },
                               child: Container(
                                 decoration: BoxDecoration(
@@ -920,6 +1226,8 @@ void _showPaymentCollectionDialog(BuildContext context, Invoice invoice) {
                                   );
 
                                   await paymentCtrl.addPayment(payment);
+
+                                  Get.find<SupabaseSyncService>().syncPayments();
 
                                   invoiceCtrl.updateInvoicePaymentStatus(
                                     invoice.invoiceId,

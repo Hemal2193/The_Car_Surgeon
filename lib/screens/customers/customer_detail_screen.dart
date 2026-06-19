@@ -374,7 +374,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                       columns: const [
                                         DataColumn(label: Text("Invoice ID")),
                                         DataColumn(label: Text("Items")),
-                                        DataColumn(label: Text("Total")),
+                                        DataColumn(label: Text("Balance")),
                                         DataColumn(label: Text("Date")),
                                         DataColumn(label: Text("Actions")),
                                       ],
@@ -398,7 +398,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                             ),
                                             DataCell(
                                               Text(
-                                                invoice.grandTotal
+                                                invoice.balanceAmount
                                                     .toStringAsFixed(2),
                                               ),
                                             ),
@@ -767,7 +767,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     Column(
                       children: [
                         Text(
-                          '₹${invoice.grandTotal.toStringAsFixed(0)}',
+                          '₹${invoice.balanceAmount.toStringAsFixed(0)}',
 
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),

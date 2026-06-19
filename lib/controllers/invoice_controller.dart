@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:tcs/controllers/payment_controller.dart';
+import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/models/invoice_payment_status.dart';
 
 import '../database/hive_boxes.dart';
@@ -31,6 +32,7 @@ class InvoiceController extends GetxController {
   }
 
   Future<void> addInvoice(Invoice invoice) async {
+    _refreshInvoicePaymentState(invoice);
     invoice.updatedAt = DateTime.now();
     invoice.isDeleted = false;
     invoice.syncStatus = SyncStatus.pending;
@@ -43,6 +45,7 @@ class InvoiceController extends GetxController {
   }
 
   Future<void> updateInvoice(Invoice invoice) async {
+    _refreshInvoicePaymentState(invoice);
     invoice.updatedAt = DateTime.now();
     invoice.syncStatus = SyncStatus.pending;
 
@@ -61,11 +64,28 @@ class InvoiceController extends GetxController {
     invoice.updatedAt = DateTime.now();
     invoice.isDeleted = true;
     invoice.syncStatus = SyncStatus.pending;
+    _refreshInvoicePaymentState(invoice);
 
     await invoiceBox.put(id, invoice);
 
     invalidatePdfCache(id);
     update();
+
+    // Also delete attached reminders and payments
+    try {
+      final reminderController = Get.find<ReminderController>();
+      await reminderController.deleteByInvoiceId(id);
+    } catch (e) {
+      print("Reminder cascade delete error: $e");
+    }
+
+    try {
+      final paymentController = Get.find<PaymentController>();
+      await paymentController.deleteByInvoiceId(id);
+    } catch (e) {
+      print("Payment cascade delete error: $e");
+    }
+
     Get.find<SupabaseSyncService>().syncInvoices();
   }
 
@@ -87,16 +107,7 @@ class InvoiceController extends GetxController {
     final invoice = invoiceBox.get(invoiceId);
     if (invoice == null) return;
 
-    final paymentCtrl = Get.find<PaymentController>();
-    final paidAmount = paymentCtrl.getPaidAmountByInvoice(invoiceId);
-
-    if (paidAmount <= 0) {
-      invoice.paymentStatus = InvoicePaymentStatus.unpaid;
-    } else if (paidAmount >= invoice.grandTotal) {
-      invoice.paymentStatus = InvoicePaymentStatus.paid;
-    } else {
-      invoice.paymentStatus = InvoicePaymentStatus.partiallyPaid;
-    }
+    _refreshInvoicePaymentState(invoice);
 
     // Mark pending so Supabase sync picks up the status change
     invoice.updatedAt = DateTime.now();
@@ -113,11 +124,29 @@ class InvoiceController extends GetxController {
 
     if (local == null || remoteInvoice.updatedAt.isAfter(local.updatedAt)) {
       remoteInvoice.syncStatus = SyncStatus.synced;
+      _refreshInvoicePaymentState(remoteInvoice);
 
       await invoiceBox.put(remoteInvoice.invoiceId, remoteInvoice);
 
       invalidatePdfCache(remoteInvoice.invoiceId);
       update();
+    }
+  }
+
+  void _refreshInvoicePaymentState(Invoice invoice) {
+    final paidAmount = Get.isRegistered<PaymentController>()
+        ? Get.find<PaymentController>().getPaidAmountByInvoice(
+            invoice.invoiceId,
+          )
+        : 0.0;
+    invoice.recalculateFinancials(collectedAmount: paidAmount);
+
+    if (invoice.advanceAmount + paidAmount <= 0) {
+      invoice.paymentStatus = InvoicePaymentStatus.unpaid;
+    } else if (invoice.balanceAmount <= 0) {
+      invoice.paymentStatus = InvoicePaymentStatus.paid;
+    } else {
+      invoice.paymentStatus = InvoicePaymentStatus.partiallyPaid;
     }
   }
 }

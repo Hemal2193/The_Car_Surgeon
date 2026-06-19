@@ -91,7 +91,7 @@ Future<void> main() async {
     Hive.registerAdapter(PaymentAdapter());
   }
 
-  if (!Hive.isAdapterRegistered(51)) {
+  if (!Hive.isAdapterRegistered(8)) {
     Hive.registerAdapter(InvoicePaymentStatusAdapter());
   }
 

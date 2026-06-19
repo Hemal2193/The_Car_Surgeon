@@ -132,13 +132,44 @@ class SupabaseSyncService {
 
     try {
       await syncCustomers();
+    } catch (e, st) {
+      print("CUSTOMERS SYNC ERROR: $e");
+      print(st);
+    }
+
+    try {
       await syncVehicles();
+    } catch (e, st) {
+      print("VEHICLES SYNC ERROR: $e");
+      print(st);
+    }
+
+    try {
       await syncItems();
+    } catch (e, st) {
+      print("ITEMS SYNC ERROR: $e");
+      print(st);
+    }
+
+    try {
       await syncInvoices();
+    } catch (e, st) {
+      print("INVOICES SYNC ERROR: $e");
+      print(st);
+    }
+
+    try {
       await syncReminders();
+    } catch (e, st) {
+      print("REMINDERS SYNC ERROR: $e");
+      print(st);
+    }
+
+    try {
       await syncPayments();
-    } catch (e) {
-      print("SYNC ERROR: $e");
+    } catch (e, st) {
+      print("PAYMENTS SYNC ERROR: $e");
+      print(st);
     }
 
     _isSyncing = false;
@@ -231,7 +262,7 @@ class SupabaseSyncService {
           'fuel_type': v.fuelType,
           'chassis_number': v.chassisNumber,
           'engine_number': v.engineNumber,
-          'odo_meter': v.odoMeter,
+          'odo_meter': v.odoMeter.toString(),
           'updated_at': v.updatedAt.toIso8601String(),
           'device_id': deviceId,
           'is_deleted': v.isDeleted,
@@ -251,16 +282,16 @@ class SupabaseSyncService {
     for (final r in remote) {
       final vehicle =
           Vehicle(
-              vehicleId: r['vehicle_id'],
-              customerId: r['customer_id'],
-              registrationNumber: r['registration_number'],
-              make: r['make'],
-              model: r['model'],
-              vehicleColor: r['vehicle_color'],
-              fuelType: r['fuel_type'],
-              chassisNumber: r['chassis_number'],
-              engineNumber: r['engine_number'],
-              odoMeter: r['odo_meter'],
+              vehicleId: r['vehicle_id']?.toString() ?? '',
+              customerId: r['customer_id']?.toString() ?? '',
+              registrationNumber: r['registration_number']?.toString() ?? '',
+              make: r['make']?.toString() ?? '',
+              model: r['model']?.toString() ?? '',
+              vehicleColor: r['vehicle_color']?.toString() ?? '',
+              fuelType: r['fuel_type']?.toString() ?? '',
+              chassisNumber: r['chassis_number']?.toString() ?? '',
+              engineNumber: r['engine_number']?.toString() ?? '',
+              odoMeter: r['odo_meter']?.toString() ?? '0',
             )
             ..updatedAt = DateTime.parse(r['updated_at'])
             ..isDeleted = r['is_deleted'] ?? false
@@ -362,7 +393,9 @@ class SupabaseSyncService {
               )
               .toList(),
           'grand_total': i.grandTotal,
+          'discount': i.discount,
           'advance_amount': i.advanceAmount,
+          'balance_amount': i.balanceAmount,
           'payment_method': i.paymentMethod,
           'payment_status': i.paymentStatus.name,
           'updated_at': i.updatedAt.toIso8601String(),
@@ -391,24 +424,24 @@ class SupabaseSyncService {
           final map = Map<String, dynamic>.from(e);
 
           return InvoiceItem(
-            itemId: map['item_id'] ?? '',
-            name: map['name'] ?? '',
-            type: map['type'] ?? '',
-            hsnSac: map['hsn_sac'] ?? '',
-            qty: (map['qty'] ?? 0) is int
+            itemId: map['item_id']?.toString() ?? '',
+            name: map['name']?.toString() ?? '',
+            type: map['type']?.toString() ?? '',
+            hsnSac: map['hsn_sac']?.toString(),
+            qty: (map['qty'] is int)
                 ? (map['qty'] as int)
-                : ((map['qty'] as num).toInt()),
-            rate: (map['rate'] ?? 0).toDouble(),
-            taxPercent: (map['tax_percent'] ?? 0).toDouble(),
-            taxAmount: (map['tax_amount'] ?? 0).toDouble(),
-            totalAmount: (map['total_amount'] ?? 0).toDouble(),
-            discount: (map['discount'] ?? 0).toDouble(),
+                : ((map['qty'] as num?)?.toInt() ?? 0),
+            rate: (map['rate'] as num?)?.toDouble() ?? 0.0,
+            taxPercent: (map['tax_percent'] as num?)?.toDouble() ?? 0.0,
+            taxAmount: (map['tax_amount'] as num?)?.toDouble() ?? 0.0,
+            totalAmount: (map['total_amount'] as num?)?.toDouble() ?? 0.0,
+            discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
             discountIsPercent: map['discount_is_percent'] ?? false,
           );
         }).toList();
       }
 
-      final paymentStatusStr = r['payment_status'] as String?;
+      final paymentStatusStr = r['payment_status']?.toString();
       final InvoicePaymentStatus paymentStatus;
       switch (paymentStatusStr) {
         case 'paid':
@@ -423,14 +456,17 @@ class SupabaseSyncService {
 
       final invoice =
           Invoice(
-              invoiceId: r['invoice_id'],
-              customerId: r['customer_id'],
-              vehicleId: r['vehicle_id'],
+              invoiceId: r['invoice_id']?.toString() ?? '',
+              customerId: r['customer_id']?.toString() ?? '',
+              vehicleId: r['vehicle_id']?.toString() ?? '',
               dateTime: DateTime.parse(r['date_time']),
+              dueDate: DateTime.parse(r['due_date']),
               items: parsedItems,
-              grandTotal: (r['grand_total'] ?? 0).toDouble(),
-              advanceAmount: (r['advance_amount'] ?? 0).toDouble(),
-              paymentMethod: r['payment_method'] ?? 'Cash',
+              grandTotal: (r['grand_total'] as num?)?.toDouble() ?? 0.0,
+              discount: (r['discount'] as num?)?.toDouble() ?? 0.0,
+              advanceAmount: (r['advance_amount'] as num?)?.toDouble() ?? 0.0,
+              balanceAmount: (r['balance_amount'] as num?)?.toDouble(),
+              paymentMethod: r['payment_method']?.toString() ?? 'Cash',
               paymentStatus: paymentStatus,
             )
             ..updatedAt = DateTime.parse(r['updated_at'])
@@ -438,6 +474,51 @@ class SupabaseSyncService {
             ..syncStatus = SyncStatus.synced;
 
       controller.upsertFromRemote(invoice);
+    }
+
+    // 3. CASCADE DELETE: if a remote invoice was deleted, cascade-mark
+    //    related local payments and reminders as deleted so they get synced
+    final deletedInvoices = remote
+        .where((r) => r['is_deleted'] == true)
+        .toList();
+    if (deletedInvoices.isNotEmpty) {
+      final paymentCtrl = Get.find<PaymentController>();
+      final reminderCtrl = Get.find<ReminderController>();
+
+      for (final r in deletedInvoices) {
+        final invoiceId = r['invoice_id']?.toString();
+        if (invoiceId == null) continue;
+
+        // Cascade-delete payments for this invoice
+        final paymentsForInv = paymentCtrl.allPaymentsIncludingDeleted
+            .where((p) => p.invoiceId == invoiceId && !p.isDeleted)
+            .toList();
+        for (final p in paymentsForInv) {
+          p.updatedAt = DateTime.now();
+          p.isDeleted = true;
+          p.syncStatus = SyncStatus.pending;
+          await p.save();
+        }
+        if (paymentsForInv.isNotEmpty) {
+          paymentCtrl.update();
+          unawaited(syncPayments());
+        }
+
+        // Cascade-delete reminders for this invoice
+        final remindersForInv = reminderCtrl.allReminders
+            .where((rm) => rm.invoiceId == invoiceId && !rm.isDeleted)
+            .toList();
+        for (final rm in remindersForInv) {
+          rm.updatedAt = DateTime.now();
+          rm.isDeleted = true;
+          rm.syncStatus = SyncStatus.pending;
+          await reminderCtrl.reminderBox.put(rm.reminderId, rm);
+        }
+        if (remindersForInv.isNotEmpty) {
+          reminderCtrl.update();
+          unawaited(syncReminders());
+        }
+      }
     }
 
     await _saveLastSync('invoices', DateTime.now());
@@ -457,19 +538,21 @@ class SupabaseSyncService {
       try {
         await supabase.from('reminders').upsert({
           'reminder_id': r.reminderId,
+          'type': r.type.name,
           'customer_id': r.customerId,
           'vehicle_id': r.vehicleId,
           'invoice_id': r.invoiceId,
-          'due_date': r.dueDate.toIso8601String(),
           'title': r.title,
           'notes': r.notes,
+          'due_date': r.dueDate.toIso8601String(),
           'completed': r.completed,
+          'created_at': r.createdAt.toIso8601String(),
           'updated_at': r.updatedAt.toIso8601String(),
           'device_id': deviceId,
           'is_deleted': r.isDeleted,
         });
 
-        controller.markAsSynced(r.reminderId);
+        await controller.markAsSynced(r.reminderId);
       } catch (e) {
         print("Reminder push error: $e");
       }
@@ -481,16 +564,26 @@ class SupabaseSyncService {
         .gte('updated_at', lastSync['reminders']!.toIso8601String());
 
     for (final r in remote) {
-      final reminder = Reminder(
-        reminderId: r['reminder_id'],
-        customerId: r['customer_id'],
-        vehicleId: r['vehicle_id'],
-        invoiceId: r['invoice_id'],
-        dueDate: DateTime.parse(r['due_date']),
-        title: r['title'],
-        notes: r['notes'],
-        completed: r['completed'],
-      );
+      final reminder =
+          Reminder(
+              reminderId: r['reminder_id'],
+              type: ReminderType.values.firstWhere(
+                (e) => e.name == r['type'],
+                orElse: () => ReminderType.service,
+              ),
+              customerId: r['customer_id'],
+              vehicleId: r['vehicle_id'],
+              invoiceId: r['invoice_id'],
+              title: r['title'],
+              notes: r['notes'],
+              dueDate: DateTime.parse(r['due_date']),
+              completed: r['completed'] ?? false,
+              createdAt: DateTime.parse(r['created_at']),
+              updatedAt: DateTime.parse(r['updated_at']),
+            )
+            ..isDeleted = r['is_deleted'] ?? false
+            ..syncStatus = SyncStatus.synced;
+
       controller.upsertFromRemote(reminder);
     }
 
@@ -501,11 +594,16 @@ class SupabaseSyncService {
   // PAYMENTS
   // =====================================================
   Future<void> syncPayments() async {
+    print("[syncPayments] called | _isSyncing=$_isSyncing");
     final controller = Get.find<PaymentController>();
 
-    final pending = controller.pendingPayments;
+    final pending = controller.pendingPaymentsIncludingDeleted;
 
+    print("[syncPayments] pending=${pending.length}");
     for (final p in pending) {
+      print(
+        "[syncPayments] pushing ${p.paymentId} invoice=${p.invoiceId} amount=${p.amount} isDeleted=${p.isDeleted}",
+      );
       try {
         await supabase.from('payments').upsert({
           'payment_id': p.paymentId,
@@ -520,6 +618,7 @@ class SupabaseSyncService {
         });
 
         controller.markAsSynced(p.paymentId);
+        print("[syncPayments] synced=${p.paymentId}");
       } catch (e) {
         print("Payment push error: $e");
       }
@@ -531,17 +630,22 @@ class SupabaseSyncService {
         .gte('updated_at', lastSync['payments']!.toIso8601String());
 
     for (final r in remote) {
-      final payment = Payment(
-        paymentId: r['payment_id'],
-        invoiceId: r['invoice_id'],
-        dateTime: DateTime.parse(r['date_time']),
-        mode: r['mode'],
-        amount: (r['amount'] ?? 0).toDouble(),
-        notes: r['notes'],
-      );
+      final payment =
+          Payment(
+              paymentId: r['payment_id']?.toString() ?? '',
+              invoiceId: r['invoice_id']?.toString() ?? '',
+              dateTime: DateTime.parse(r['date_time']),
+              mode: r['mode']?.toString() ?? 'Cash',
+              amount: (r['amount'] as num?)?.toDouble() ?? 0.0,
+              notes: r['notes']?.toString(),
+            )
+            ..updatedAt = DateTime.parse(r['updated_at'])
+            ..isDeleted = r['is_deleted'] ?? false
+            ..syncStatus = SyncStatus.synced;
       controller.upsertFromRemote(payment);
     }
 
+    print("[syncPayments] remote count=${remote.length}");
     await _saveLastSync('payments', DateTime.now());
   }
 }

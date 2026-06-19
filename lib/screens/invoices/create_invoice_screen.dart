@@ -40,8 +40,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Invoice date & due date
+  DateTime _invoiceDate = DateTime.now();
+  DateTime _invoiceDueDate = DateTime.now();
+
   // Advance fields
   final TextEditingController _advanceController = TextEditingController();
+  final TextEditingController _discountController = TextEditingController();
   String _selectedPaymentMethod = 'Cash';
   static const List<String> _paymentMethods = [
     'Cash',
@@ -59,9 +64,14 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       TextEditingController();
   DateTime _reminderDueDate = DateTime.now().add(const Duration(days: 7));
 
+  double get subtotalBeforeDiscount =>
+      rows.fold(0, (sum, e) => sum + e.grossAmount);
+  // double get totalDiscount => rows.fold(0, (sum, e) => sum + e.discountAmount);
+  double get totalTax => rows.fold(0, (sum, e) => sum + e.taxAmount);
   double get grandTotal => rows.fold(0, (sum, e) => sum + e.totalAmount);
   double get advanceAmount => double.tryParse(_advanceController.text) ?? 0;
-  double get remainingAmount => grandTotal - advanceAmount;
+  double get discount => double.tryParse(_discountController.text) ?? 0;
+  double get remainingAmount => grandTotal - advanceAmount - discount;
 
   bool get isEditing => widget.invoice != null;
 
@@ -91,9 +101,16 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         invoice.items.map((item) => _InvoiceRow.fromInvoiceItem(item)),
       );
 
+      // Load invoice dates
+      _invoiceDate = invoice.dateTime;
+      _invoiceDueDate = invoice.dueDate;
+
       // Load advance fields
       if (invoice.advanceAmount > 0) {
         _advanceController.text = invoice.advanceAmount.toStringAsFixed(2);
+      }
+      if (invoice.discount > 0) {
+        _discountController.text = invoice.discount.toStringAsFixed(2);
       }
       _selectedPaymentMethod = invoice.paymentMethod;
 
@@ -112,18 +129,22 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   @override
   void dispose() {
     _advanceController.dispose();
+    _discountController.dispose();
     _reminderTitleController.dispose();
     _reminderNotesController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDueDate() async {
+  /// Generic date picker that allows selecting any date (past, present, or future).
+  /// [currentDate] is the initially selected date.
+  /// Returns the picked date or null if cancelled.
+  Future<DateTime?> _pickDate(DateTime currentDate) async {
     final theme = Theme.of(context);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _reminderDueDate,
-      firstDate: DateTime.now(),
+      initialDate: currentDate,
+      firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       builder: (context, child) {
         return Theme(
@@ -168,6 +189,29 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         );
       },
     );
+    return picked;
+  }
+
+  Future<void> _pickInvoiceDate() async {
+    final picked = await _pickDate(_invoiceDate);
+    if (picked != null) {
+      setState(() {
+        _invoiceDate = picked;
+      });
+    }
+  }
+
+  Future<void> _pickInvoiceDueDate() async {
+    final picked = await _pickDate(_invoiceDueDate);
+    if (picked != null) {
+      setState(() {
+        _invoiceDueDate = picked;
+      });
+    }
+  }
+
+  Future<void> _pickDueDate() async {
+    final picked = await _pickDate(_reminderDueDate);
     if (picked != null) {
       setState(() {
         _reminderDueDate = picked;
@@ -193,6 +237,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       notes: _reminderNotesController.text.trim().isNotEmpty
           ? _reminderNotesController.text.trim()
           : null,
+      type: ReminderType.service,
     );
 
     Get.find<ReminderController>().addReminder(reminder);
@@ -233,6 +278,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         notes: _reminderNotesController.text.trim().isNotEmpty
             ? _reminderNotesController.text.trim()
             : null,
+        type: ReminderType.service,
       );
       reminderCtrl.addReminder(reminder);
     }
@@ -245,6 +291,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   void saveInvoice() async {
+    debugPrint("Advance: ${_advanceController.text}");
+    debugPrint("Discount: ${_discountController.text}");
+
+    debugPrint("advanceAmount = $advanceAmount");
+    debugPrint("discount = $discount");
+
+    final invoiceCtrl = Get.find<InvoiceController>();
     if (selectedCustomer == null || selectedVehicle == null || rows.isEmpty) {
       return;
     }
@@ -269,12 +322,18 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       invoiceId: widget.invoice?.invoiceId ?? IdGenerator.generateInvoiceId(),
       customerId: selectedCustomer!.customerId,
       vehicleId: selectedVehicle!.vehicleId,
-      dateTime: widget.invoice?.dateTime ?? DateTime.now(),
+      dateTime: _invoiceDate,
+      dueDate: _invoiceDueDate,
       items: invoiceItems,
       grandTotal: grandTotal,
+      discount: discount,
       advanceAmount: advanceAmount,
       paymentMethod: _selectedPaymentMethod,
     );
+
+    await invoiceCtrl.addInvoice(invoice);
+    final saved = invoiceCtrl.getInvoiceById(invoice.invoiceId);
+    debugPrint("Saved discount = ${saved?.discount}");
 
     if (isEditing) {
       await Get.find<InvoiceController>().updateInvoice(invoice);
@@ -304,6 +363,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       selectedCustomer = null;
       selectedVehicle = null;
       _advanceController.clear();
+      _discountController.clear();
       _customerSelectorVersion++;
     });
 
@@ -336,6 +396,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               Container(
                 color: Colors.white,
                 child: const TabBar(
+                  indicatorSize: TabBarIndicatorSize.label,
                   labelColor: Colors.black,
                   unselectedLabelColor: Colors.grey,
                   indicatorColor: Colors.black,
@@ -353,7 +414,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   ],
                 ),
               ),
-              _mobileBottomBar(),
             ],
           ),
         ),
@@ -363,7 +423,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
   Widget _mobileTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.only(left: 12, right: 12, top: 10),
       child: Row(
         children: [
           IconButton(
@@ -460,6 +520,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _mobileVehicleSelector() {
+    final FocusNode vehicleFocusNode = FocusNode();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -521,20 +582,119 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         if (selectedCustomer == null)
           const Text("Select customer first")
         else
-          AppSelector<Vehicle>(
-            key: ValueKey('mobile_vehicle_$_vehicleSelectorVersion'),
-            items: Get.find<VehicleController>().vehicles
-                .where((v) => v.customerId == selectedCustomer!.customerId)
-                .toList(),
-            initialItem: selectedVehicle,
-            hintText: "Select Vehicle",
-            displayText: (v) => v.registrationNumber,
-            searchText: (v) => v.registrationNumber,
-            itemBuilder: (v) => Text(v.registrationNumber),
-            onSelected: (v) {
-              setState(() => selectedVehicle = v);
-            },
+          GestureDetector(
+            child: AppSelector<Vehicle>(
+              focusNode: vehicleFocusNode,
+              key: ValueKey('mobile_vehicle_$_vehicleSelectorVersion'),
+              items: Get.find<VehicleController>().vehicles
+                  .where((v) => v.customerId == selectedCustomer!.customerId)
+                  .toList(),
+              initialItem: selectedVehicle,
+              hintText: "Select Vehicle",
+              displayText: (v) => v.registrationNumber,
+              searchText: (v) => v.registrationNumber,
+              itemBuilder: (v) => Text(v.registrationNumber),
+              onSelected: (v) {
+                setState(() => selectedVehicle = v);
+              },
+            ),
           ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}-"
+        "${date.month.toString().padLeft(2, '0')}-"
+        "${date.year}";
+  }
+
+  Widget _mobileInvoiceDatesSelector() {
+    return Row(
+      children: [
+        // Invoice Date
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Invoice Date",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickInvoiceDate,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDate(_invoiceDate),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Due Date
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Due Date",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickInvoiceDueDate,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDate(_invoiceDueDate),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -576,7 +736,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                         .map(
                           (m) => DropdownMenuItem(
                             value: m,
-                            child: Text(m, style: const TextStyle(fontSize: 14)),
+                            child: Text(
+                              m,
+                              style: const TextStyle(fontSize: 14),
+                            ),
                           ),
                         )
                         .toList(),
@@ -588,6 +751,25 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileDiscountSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Discount (Optional)",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        AppTextField(
+          hintText: 'Enter discount amount',
+          controller: _discountController,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => setState(() {}),
         ),
       ],
     );
@@ -701,83 +883,23 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _mobileBottomBar() {
-    final hasAdvance = advanceAmount > 0;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasAdvance) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Grand Total", style: const TextStyle(fontSize: 14)),
-                Text(
-                  "Rs. ${grandTotal.toStringAsFixed(2)}",
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Advance ($_selectedPaymentMethod):",
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                ),
-                Text(
-                  "- Rs. ${advanceAmount.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Remaining",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  "Rs. ${remainingAmount.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: remainingAmount < 0 ? Colors.red : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ] else ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Total: ",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  "Rs. ${grandTotal.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          cButton(saveInvoice, isEditing ? "Update" : "Save", true),
+          _amountLine("Subtotal", subtotalBeforeDiscount),
+          _amountLine("Tax", totalTax),
+          _amountLine("Grand Total", grandTotal),
+          _amountLine("Discount", -discount),
+          _amountLine("Advance ($_selectedPaymentMethod)", -advanceAmount),
+          Divider(color: Colors.grey.shade300),
+          _amountLine("Balance", remainingAmount, bold: true),
         ],
       ),
     );
@@ -793,7 +915,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           const SizedBox(height: 12),
           _mobileVehicleSelector(),
           const SizedBox(height: 12),
-          _mobileAdvanceSection(),
+          _mobileInvoiceDatesSelector(),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.grey),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -803,6 +927,16 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           _buildItemSearchBar(),
           const SizedBox(height: 12),
           _mobileItemsList(),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.grey),
+          const SizedBox(height: 12),
+          _mobileAdvanceSection(),
+          const SizedBox(height: 12),
+          _mobileDiscountSection(),
+          const SizedBox(height: 12),
+          _mobileBottomBar(),
+          const SizedBox(height: 12),
+          cButton(saveInvoice, isEditing ? "Update" : "Save", true),
         ],
       ),
     );
@@ -923,9 +1057,17 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             const SizedBox(height: 16),
             _buildVehicleSelector(),
             const SizedBox(height: 16),
+            _buildInvoiceDatesSelector(),
+            const SizedBox(height: 16),
+            const Divider(color: Colors.grey),
+            const SizedBox(height: 16),
+            _buildAddItemButton(),
+            const SizedBox(height: 16),
+            const Divider(color: Colors.grey),
+            const SizedBox(height: 16),
             _buildAdvanceSection(),
             const SizedBox(height: 20),
-            _buildAddItemButton(),
+            _buildDiscountSection(),
             const SizedBox(height: 25),
             _buildReminderSection(),
           ],
@@ -1013,6 +1155,96 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
+  Widget _buildInvoiceDatesSelector() {
+    return Row(
+      children: [
+        // Invoice Date
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Invoice Date",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickInvoiceDate,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDate(_invoiceDate),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Due Date
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Due Date",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickInvoiceDueDate,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDate(_invoiceDueDate),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAdvanceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1052,6 +1284,25 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               },
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDiscountSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Discount (Optional)',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        AppTextField(
+          hintText: 'Enter discount amount',
+          controller: _discountController,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => setState(() {}),
         ),
       ],
     );
@@ -1114,7 +1365,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           hintText: 'Search by item name or HSN/SAC',
           prefixIcon: const Icon(Icons.search, size: 20),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 14,
+          ),
         ),
         onChanged: (value) {
           setState(() {
@@ -1311,7 +1565,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   Widget _buildGrandTotal() {
-    final hasAdvance = advanceAmount > 0;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -1322,69 +1575,42 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasAdvance) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Grand Total",
-                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                ),
-                Text("Rs. ${grandTotal.toStringAsFixed(2)}", style: const TextStyle(fontSize: 14)),
-              ],
+          _amountLine("Subtotal", subtotalBeforeDiscount),
+          _amountLine("Tax", totalTax),
+          _amountLine("Grand Total", grandTotal),
+          _amountLine("Discount", -discount),
+          _amountLine("Advance ($_selectedPaymentMethod)", -advanceAmount),
+          Divider(color: Colors.grey.shade400),
+          _amountLine("Balance", remainingAmount, bold: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _amountLine(String label, double value, {bool bold = false}) {
+    final isNegative = value < 0;
+    final amount = value.abs().toStringAsFixed(2);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: bold ? 16 : 14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+              color: bold ? Colors.black : Colors.grey.shade800,
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Advance ($_selectedPaymentMethod):",
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                ),
-                Text(
-                  "- Rs. ${advanceAmount.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          ),
+          Text(
+            "${isNegative ? '- ' : ''}Rs. $amount",
+            style: TextStyle(
+              fontSize: bold ? 16 : 14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+              color: bold && value < 0 ? Colors.red : Colors.black,
             ),
-            const SizedBox(height: 4),
-            Divider(color: Colors.grey.shade400),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Remaining",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  "Rs. ${remainingAmount.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: remainingAmount < 0 ? Colors.red : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ] else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Grand Total",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  "Rs. ${grandTotal.toStringAsFixed(2)}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ],
-            ),
+          ),
         ],
       ),
     );
@@ -1439,10 +1665,12 @@ class _InvoiceRow {
   /// Exclusive price before tax = (qty * rate) - discount
   double get exclusivePrice => (qty * rate) - discountAmount;
 
+  double get grossAmount => qty * rate;
+
   /// Discount amount (converted from percent if needed)
   double get discountAmount {
     if (discountIsPercent) {
-      return (qty * rate) * discount / 100;
+      return grossAmount * discount / 100;
     }
     return discount;
   }

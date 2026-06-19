@@ -449,9 +449,9 @@ class InvoicePdfService {
                               pw.Center(
                                 child: pw.Text(
                                   reminder != null
-                                      ? "${reminder.dueDate.day.toString().padLeft(2, '0')}-"
-                                            "${reminder.dueDate.month.toString().padLeft(2, '0')}-"
-                                            "${(reminder.dueDate.year % 100).toString().padLeft(2, '0')}"
+                                      ? "${invoice.dueDate.day.toString().padLeft(2, '0')}-"
+                                            "${invoice.dueDate.month.toString().padLeft(2, '0')}-"
+                                            "${(invoice.dueDate.year % 100).toString().padLeft(2, '0')}"
                                       : "-",
                                   style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold,

@@ -54,8 +54,8 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
 
   void _selectItem(T item) {
     controller.text = widget.displayText(item);
-    widget.onSelected(item);
     _removeOverlay();
+    widget.onSelected(item);
   }
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
@@ -146,6 +146,8 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+
+    _textFieldFocusNode.unfocus();
   }
 
   void _filter(String value) {

@@ -49,11 +49,22 @@ class Invoice extends HiveObject {
   @HiveField(11)
   InvoicePaymentStatus paymentStatus;
 
+  @HiveField(12)
+  double balanceAmount;
+
+  /// Total item-wise discount already applied before [grandTotal].
+  @HiveField(13)
+  double discount;
+
+  @HiveField(14)
+  DateTime dueDate;
+
   Invoice({
     required this.invoiceId,
     required this.customerId,
     required this.vehicleId,
     required this.dateTime,
+    required this.dueDate,
     required this.items,
     required this.grandTotal,
 
@@ -63,7 +74,53 @@ class Invoice extends HiveObject {
     this.advanceAmount = 0,
     this.paymentMethod = 'Cash',
     this.paymentStatus = InvoicePaymentStatus.unpaid,
-  }) : updatedAt = updatedAt ?? DateTime.now();
+    double? balanceAmount,
+    double? discount,
+  }) : discount = discount ?? 0,
+       balanceAmount =
+           balanceAmount ??
+           calculateBalance(
+             grandTotal: grandTotal,
+             advanceAmount: advanceAmount,
+             discount: discount ?? 0.0,
+           ),
+       updatedAt = updatedAt ?? DateTime.now();
+
+  static double calculateItemsDiscount(List<InvoiceItem> items) {
+    return items.fold<double>(0, (sum, item) => sum + item.discountAmount);
+  }
+
+  static double calculateBalance({
+    required double grandTotal,
+    required double advanceAmount,
+    required double discount,
+    double collectedAmount = 0,
+  }) {
+    return grandTotal - advanceAmount - discount - collectedAmount;
+  }
+
+  double get subtotalBeforeDiscount {
+    return items.fold<double>(0, (sum, item) => sum + item.grossAmount);
+  }
+
+  double get taxableAmount {
+    return items.fold<double>(0, (sum, item) => sum + item.taxableAmount);
+  }
+
+  double get taxAmount {
+    return items.fold<double>(0, (sum, item) => sum + item.taxAmount);
+  }
+
+  void recalculateFinancials({double collectedAmount = 0}) {
+    // discount = calculateItemsDiscount(items);
+    grandTotal = items.fold<double>(0, (sum, item) => sum + item.totalAmount);
+    balanceAmount = calculateBalance(
+      grandTotal: grandTotal,
+      advanceAmount: advanceAmount,
+      collectedAmount: collectedAmount,
+      discount: discount,
+    );
+  }
 }
 
 @HiveType(typeId: 4)
@@ -116,4 +173,15 @@ class InvoiceItem {
     this.discount = 0,
     this.discountIsPercent = false,
   });
+
+  double get grossAmount => qty * rate;
+
+  double get discountAmount {
+    if (discountIsPercent) {
+      return grossAmount * discount / 100;
+    }
+    return discount;
+  }
+
+  double get taxableAmount => grossAmount - discountAmount;
 }

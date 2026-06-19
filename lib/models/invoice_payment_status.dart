@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 
 part 'invoice_payment_status.g.dart';
 
-@HiveType(typeId: 51)
+@HiveType(typeId: 8)
 enum InvoicePaymentStatus {
   @HiveField(0)
   unpaid,

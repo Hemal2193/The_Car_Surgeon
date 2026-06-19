@@ -186,6 +186,7 @@ class HomePage extends StatelessWidget {
         icon: const Icon(Icons.add),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        heroTag: null,
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -218,6 +219,7 @@ class HomePage extends StatelessWidget {
         icon: const Icon(Icons.add),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        heroTag: null,
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -250,6 +252,7 @@ class HomePage extends StatelessWidget {
         icon: const Icon(Icons.add),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        heroTag: null,
         onPressed: () {
           Get.to(() => const CreateInvoiceScreen());
         },
@@ -265,6 +268,7 @@ class HomePage extends StatelessWidget {
         icon: const Icon(Icons.add),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        heroTag: null,
         onPressed: () {
           showModalBottomSheet(
             context: context,
