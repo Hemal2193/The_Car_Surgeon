@@ -105,7 +105,9 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
   }
 
   void _showOverlay() {
-    _removeOverlay();
+    // Remove old overlay entry without unfocusing the text field
+    _overlayEntry?.remove();
+    _overlayEntry = null;
 
     final overlay = Overlay.of(context);
 
@@ -127,12 +129,13 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
       children: List.generate(visibleItems.length, (index) {
         final item = visibleItems[index];
 
-        return Container(
-          color: highlightedIndex == index
-              ? Colors.black12
-              : Colors.transparent,
+        return Material(
+          color: Colors.transparent,
           child: ListTile(
             dense: true,
+            tileColor: highlightedIndex == index
+                ? Colors.black12
+                : null,
             title: widget.itemBuilder(item),
             onTap: () => _selectItem(item),
           ),
@@ -148,6 +151,11 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
     _overlayEntry = null;
 
     _textFieldFocusNode.unfocus();
+  }
+
+  void _removeOverlayOnly() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   void _filter(String value) {
@@ -167,7 +175,7 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
     if (filtered.isNotEmpty) {
       _showOverlay();
     } else {
-      _removeOverlay();
+      _removeOverlayOnly();
     }
   }
 

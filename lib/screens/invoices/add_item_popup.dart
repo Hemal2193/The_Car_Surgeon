@@ -254,26 +254,33 @@ class _AddItemPopupState extends State<AddItemPopup> {
                       ),
                       InkWell(
                         onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            isDismissible: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) {
-                              return DraggableScrollableSheet(
-                                expand: false,
-                                initialChildSize: 0.80,
-                                minChildSize: 0.80,
-                                maxChildSize: 0.92,
-                                shouldCloseOnMinExtent: true,
-                                builder: (context, scrollController) {
-                                  return AddItemDialog(
-                                    scrollController: scrollController,
-                                  );
-                                },
-                              );
-                            },
-                          );
+                          if (isDesktop) {
+                            showDialog(
+                              context: context,
+                              builder: (_) => const AddItemDialog(),
+                            );
+                          } else {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              isDismissible: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) {
+                                return DraggableScrollableSheet(
+                                  expand: false,
+                                  initialChildSize: 0.80,
+                                  minChildSize: 0.80,
+                                  maxChildSize: 0.92,
+                                  shouldCloseOnMinExtent: true,
+                                  builder: (context, scrollController) {
+                                    return AddItemDialog(
+                                      scrollController: scrollController,
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          }
                         },
                         child: Container(
                           decoration: BoxDecoration(

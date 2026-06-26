@@ -7,10 +7,13 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
+import 'package:tcs/screens/payments/mobile_payment_history_screen.dart';
+import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 import 'package:tcs/widgets/erp_mobile_tile.dart';
+import 'package:tcs/widgets/payment_collection_dialog.dart';
 
 import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
@@ -292,153 +295,123 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMobileKpis() => GetBuilder<CustomerController>(
-    builder: (customerCtrl) {
-      return GetBuilder<VehicleController>(
-        builder: (vehicleCtrl) {
-          return GetBuilder<ItemController>(
-            builder: (itemCtrl) {
-              return GetBuilder<InvoiceController>(
-                builder: (invoiceCtrl) {
-                  final totalRevenue = invoiceCtrl.invoices.fold<double>(
-                    0,
-                    (sum, inv) => sum + inv.grandTotal,
-                  );
-                  final totalDiscount = invoiceCtrl.invoices.fold<double>(
-                    0,
-                    (sum, inv) => sum + inv.discount,
-                  );
-                  final totalAdvance = invoiceCtrl.invoices.fold<double>(
-                    0,
-                    (sum, inv) => sum + inv.advanceAmount,
-                  );
-                  final totalOutstanding = invoiceCtrl.invoices.fold<double>(
-                    0,
-                    (sum, inv) => sum + inv.balanceAmount,
-                  );
-                  final totalCollected = Get.find<PaymentController>()
-                      .allPayments
-                      .fold<double>(0, (sum, p) => sum + p.amount);
+  Widget _buildMobileKpis() => GetBuilder<InvoiceController>(
+    builder: (invoiceCtrl) {
+      final totalRevenue = invoiceCtrl.invoices.fold<double>(
+        0,
+        (sum, inv) => sum + inv.grandTotal,
+      );
+      final totalOutstanding = invoiceCtrl.invoices.fold<double>(
+        0,
+        (sum, inv) => sum + inv.balanceAmount,
+      );
+      final totalCollected = Get.find<PaymentController>().allPayments
+          .fold<double>(0, (sum, p) => sum + p.amount);
 
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _kpiCard(
-                              "Customers",
-                              customerCtrl.customers.length.toString(),
-                              Icons.people_outline,
-                              () {},
-                            ),
-                          ),
+      return Column(
+        children: [
+          // Collected & Outstanding row
+          Row(
+            children: [
+              Expanded(
+                child: _kpiCard(
+                  "Collected",
+                  "₹${totalCollected.toStringAsFixed(2)}",
+                  Icons.payments_outlined,
+                  () {},
+                  isRevenue: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _kpiCard(
+                  "Outstanding",
+                  "₹${totalOutstanding.toStringAsFixed(2)}",
+                  Icons.pending_actions_outlined,
+                  () {},
+                  isRevenue: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
-                          const SizedBox(width: 12),
+          // Invoice Total full-width card
+          _kpiCard(
+            "Invoice Total",
+            "₹${totalRevenue.toStringAsFixed(2)}",
+            Icons.currency_rupee,
+            () {},
+            isRevenue: true,
+          ),
+          const SizedBox(height: 12),
 
-                          Expanded(
-                            child: _kpiCard(
-                              "Vehicles",
-                              vehicleCtrl.vehicles.length.toString(),
-                              Icons.directions_car_outlined,
-                              () {},
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _kpiCard(
-                              "Items",
-                              itemCtrl.items.length.toString(),
-                              Icons.inventory_2_outlined,
-                              () {},
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          Expanded(
-                            child: _kpiCard(
-                              "Invoices",
-                              invoiceCtrl.invoices.length.toString(),
-                              Icons.receipt_outlined,
-                              () {},
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      _kpiCard(
-                        "Invoice Total",
-                        "₹${totalRevenue.toStringAsFixed(2)}",
-                        Icons.currency_rupee,
-                        () {},
-                        isRevenue: true,
-                      ),
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _kpiCard(
-                              "Discount",
-                              "₹${totalDiscount.toStringAsFixed(2)}",
-                              Icons.sell_outlined,
-                              () {},
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _kpiCard(
-                              "Advance",
-                              "₹${totalAdvance.toStringAsFixed(2)}",
-                              Icons.account_balance_wallet_outlined,
-                              () {},
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _kpiCard(
-                              "Collected",
-                              "₹${totalCollected.toStringAsFixed(2)}",
-                              Icons.payments_outlined,
-                              () {},
-                              isRevenue: true,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _kpiCard(
-                              "Outstanding",
-                              "₹${totalOutstanding.toStringAsFixed(2)}",
-                              Icons.pending_actions_outlined,
-                              () {},
-                              isRevenue: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          );
-        },
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: _buildPaymentActionCard(
+                  icon: Icons.payments_outlined,
+                  label: "Collect Payment",
+                  onTap: () {
+                    PaymentCollectionDialog.show(context: context);
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildPaymentActionCard(
+                  icon: Icons.history_outlined,
+                  label: "Payment History",
+                  onTap: () {
+                    Get.to(() => const MobilePaymentHistoryScreen());
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       );
     },
   );
+
+  Widget _buildPaymentActionCard({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 22),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              // const Spacer(),
+              // const Icon(Icons.chevron_right, color: Colors.white70, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildMobileInvoices() {
     return GetBuilder<InvoiceController>(
@@ -549,28 +522,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                       AppPopupMenu(
-                        onEdit: () {
-                          Get.to(() => CreateInvoiceScreen(invoice: inv));
-                        },
+                        options: [
+                          AppPopupMenuOption(
+                            icon: Icons.edit_outlined,
+                            label: "Edit",
+                            onTap: () {
+                              Get.to(() => CreateInvoiceScreen(invoice: inv));
+                            },
+                          ),
 
-                        onDelete: () {
-                          showDialog(
-                            context: context,
-
-                            builder: (_) => DeleteConfirmationDialog(
-                              title: 'Delete Invoice',
-
-                              message:
-                                  'Are you sure you want to delete '
-                                  '${inv.invoiceId}?',
-
-                              onDelete: () async {
-                                await Get.find<InvoiceController>()
-                                    .deleteInvoice(inv.invoiceId);
-                              },
-                            ),
-                          );
-                        },
+                          AppPopupMenuOption(
+                            icon: Icons.delete_outline,
+                            label: "Delete",
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => DeleteConfirmationDialog(
+                                  title: 'Delete Invoice',
+                                  message:
+                                      'Are you sure you want to delete ${inv.invoiceId}?',
+                                  onDelete: () async {
+                                    await Get.find<InvoiceController>()
+                                        .deleteInvoice(inv.invoiceId);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -585,32 +564,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMobileReminders() {
     return GetBuilder<ReminderController>(
       builder: (reminderCtrl) {
-        final overdue = reminderCtrl.getOverdueReminders();
-        final dueThisWeek = reminderCtrl.getDueThisWeek();
-        final dueThisMonth = reminderCtrl.getDueThisMonth();
-
-        final allRelevant = <_ReminderGroup>{};
-
-        for (final r in overdue) {
-          allRelevant.add(_ReminderGroup(r, ReminderUrgency.overdue));
-        }
-
-        for (final r in dueThisWeek) {
-          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
-            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisWeek));
-          }
-        }
-
-        for (final r in dueThisMonth) {
-          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
-            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisMonth));
-          }
-        }
-
-        final sorted = allRelevant.toList()
-          ..sort((a, b) => a.reminder.dueDate.compareTo(b.reminder.dueDate));
-
-        final top5 = sorted.take(5).toList();
+        final allReminders = reminderCtrl.reminders.toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,51 +577,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 12),
 
-            if (top5.isEmpty)
+            if (allReminders.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: Text('No pending reminders')),
+                child: Center(child: Text('No reminders')),
               )
             else
-              ...top5.map((group) => _buildMobileReminderTile(group)),
+              ...allReminders.take(10).map((r) => _buildMobileReminderTile(r)),
           ],
         );
       },
     );
   }
 
-  Widget _buildMobileReminderTile(_ReminderGroup group) {
-    final reminder = group.reminder;
+  /// Determines the reminder's urgency based on due date.
+  /// Returns (color, label) pair.
+  (Color, String) _reminderUrgency(Reminder reminder) {
+    if (reminder.completed) return (Colors.green, 'Done');
 
+    final now = DateTime.now();
+    final due = reminder.dueDate;
+
+    // Overdue – due date is before today
+    if (due.isBefore(now)) return (Colors.red, 'Overdue');
+
+    // This week – based on weekday boundaries (Monday to Sunday)
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+    if (!due.isBefore(startOfWeek) && due.isBefore(endOfWeek)) {
+      return (Colors.orange, 'This Week');
+    }
+
+    // This month
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+    if (!due.isBefore(startOfMonth) && due.isBefore(startOfNextMonth)) {
+      return (Colors.blue, 'This Month');
+    }
+
+    // Beyond this month – still show as upcoming with month badge
+    return (Colors.blue, 'Coming Month');
+  }
+
+  Widget _buildMobileReminderTile(Reminder reminder) {
     final vehicleCtrl = Get.find<VehicleController>();
     final customerCtrl = Get.find<CustomerController>();
+    final reminderCtrl = Get.find<ReminderController>();
+    final invoiceCtrl = Get.find<InvoiceController>();
 
     final vehicle = vehicleCtrl.getVehicleById(reminder.vehicleId);
+    final invoice = reminder.invoiceId == null
+        ? null
+        : invoiceCtrl.getInvoiceById(reminder.invoiceId!);
 
     final customer = customerCtrl.getCustomerById(reminder.customerId);
 
-    Color color;
-    String label;
-
-    switch (group.urgency) {
-      case ReminderUrgency.overdue:
-        color = Colors.red;
-        label = 'Overdue';
-        break;
-
-      case ReminderUrgency.dueThisWeek:
-        color = Colors.orange;
-        label = 'This Week';
-        break;
-
-      case ReminderUrgency.dueThisMonth:
-        color = Colors.blue;
-        label = 'This Month';
-        break;
-    }
+    final (Color color, String label) = _reminderUrgency(reminder);
+    final isCompleted = reminder.completed;
 
     return ErpMobileTile(
-      onTap: () {},
+      onTap: () {
+        if (invoice != null) {
+          Get.to(() => InvoicePreviewScreen(invoiceId: invoice.invoiceId));
+        }
+      },
 
       leading: CircleAvatar(
         backgroundColor: color.withOpacity(0.1),
@@ -677,42 +651,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       subtitles: [
         if (customer != null) customer.name,
-
-        if (vehicle != null)
-          '${vehicle.make} ${vehicle.model} \n${vehicle.registrationNumber}',
-
-        // 'Due: '
-        //     '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
-        //     '${reminder.dueDate.month.toString().padLeft(2, '0')}-'
-        //     '${reminder.dueDate.year.toString()}',
+        if (vehicle != null &&
+            (vehicle.make.isNotEmpty || vehicle.model.isNotEmpty))
+          '${vehicle.make} ${vehicle.model}',
+        if (vehicle != null && vehicle.registrationNumber.isNotEmpty)
+          vehicle.registrationNumber,
         if (reminder.notes != null && reminder.notes!.trim().isNotEmpty)
           reminder.notes!,
       ],
 
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      trailing: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
-            '${reminder.dueDate.month.toString().padLeft(2, '0')}-'
-            '${reminder.dueDate.year.toString().substring(2)}',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
+          Column(
+            children: [
+              Text(
+                '${reminder.dueDate.day.toString().padLeft(2, '0')}-'
+                '${reminder.dueDate.month.toString().padLeft(2, '0')}-'
+                '${reminder.dueDate.year.toString().substring(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                  color: isCompleted ? Colors.grey : Colors.black,
+                ),
               ),
-            ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          AppPopupMenu(
+            options: [
+              if (!isCompleted)
+                AppPopupMenuOption(
+                  icon: Icons.check_sharp,
+                  label: 'Mark as Done',
+                  onTap: () {
+                    reminderCtrl.toggleCompleted(reminder.reminderId);
+                  },
+                ),
+              AppPopupMenuOption(
+                icon: Icons.delete,
+                label: 'Delete Reminder',
+                onTap: () {
+                  reminderCtrl.deleteReminder(reminder.reminderId);
+                },
+              ),
+              AppPopupMenuOption(
+                icon: Icons.share_outlined,
+                label: "Share on Whatsapp",
+                onTap: () {
+                  WhatsappShare.reminderShare(reminder.reminderId);
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -991,6 +996,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GetBuilder<InvoiceController>(
       builder: (invoiceCtrl) {
         final customerCtrl = Get.find<CustomerController>();
+
         // final vehicleCtrl = Get.find<VehicleController>();
 
         final recentInvoices = invoiceCtrl.invoices.toList()
@@ -1048,7 +1054,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     headingRowHeight: 36,
                     dataRowMinHeight: 36,
                     dataRowMaxHeight: 44,
-                    // columnSpacing: 24,
+                    columnSpacing: 45,
                     columns: const [
                       DataColumn(
                         label: Text(
@@ -1089,6 +1095,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       DataColumn(
                         label: Text(
                           "Date",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          "Actions",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -1157,6 +1172,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: const TextStyle(fontSize: 12),
                             ),
                           ),
+                          DataCell(
+                            AppPopupMenu(
+                              options: [
+                                AppPopupMenuOption(
+                                  icon: Icons.edit_outlined,
+                                  label: 'Edit',
+                                  onTap: () {
+                                    Get.to(
+                                      () => CreateInvoiceScreen(invoice: inv),
+                                    );
+                                  },
+                                ),
+
+                                AppPopupMenuOption(
+                                  icon: Icons.delete_outline,
+                                  label: 'Delete',
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => DeleteConfirmationDialog(
+                                        title: "Delete Invoice",
+                                        message:
+                                            "Are you sure you want to delete ${inv.invoiceId}?",
+                                        onDelete: () async {
+                                          await invoiceCtrl.deleteInvoice(
+                                            inv.invoiceId,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                                AppPopupMenuOption(
+                                  icon: Icons.share_outlined,
+                                  label: "Send Payment Reminder",
+                                  onTap: () {
+                                    WhatsappShare.invoicePaymentReminder(
+                                      inv.invoiceId,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       );
                     }).toList(),
@@ -1175,29 +1234,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildReminderPanel() {
     return GetBuilder<ReminderController>(
       builder: (reminderCtrl) {
-        final overdue = reminderCtrl.getOverdueReminders();
-        final dueThisWeek = reminderCtrl.getDueThisWeek();
-        final dueThisMonth = reminderCtrl.getDueThisMonth();
-
-        // Combine and sort: overdue first, then due this week, then due this month
-        final allRelevant = <_ReminderGroup>{};
-        for (final r in overdue) {
-          allRelevant.add(_ReminderGroup(r, ReminderUrgency.overdue));
-        }
-        for (final r in dueThisWeek) {
-          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
-            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisWeek));
-          }
-        }
-        for (final r in dueThisMonth) {
-          if (!allRelevant.any((g) => g.reminder.reminderId == r.reminderId)) {
-            allRelevant.add(_ReminderGroup(r, ReminderUrgency.dueThisMonth));
-          }
-        }
-
-        final sorted = allRelevant.toList()
-          ..sort((a, b) => a.reminder.dueDate.compareTo(b.reminder.dueDate));
-        final top5 = sorted.take(5).toList();
+        final allReminders = reminderCtrl.reminders.toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        final overdueCount = reminderCtrl.getOverdueReminders().length;
+        final top5 = allReminders.take(5).toList();
 
         return Container(
           decoration: BoxDecoration(
@@ -1225,7 +1265,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const Spacer(),
-                    if (overdue.isNotEmpty)
+                    Text(
+                      "${allReminders.length} total",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    if (overdueCount > 0) ...[
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -1236,7 +1284,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          "${overdue.length} overdue",
+                          "$overdueCount overdue",
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.red.shade700,
@@ -1244,6 +1292,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -1251,18 +1300,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (top5.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: Text("No pending reminders")),
+                  child: Center(child: Text("No reminders")),
                 )
               else
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     itemCount: top5.length,
-                    // separatorBuilder: (_, _) =>
-                    //     const Divider(height: 1, indent: 16, endIndent: 16),
                     itemBuilder: (context, i) {
-                      final group = top5[i];
-                      return _buildReminderTile(group);
+                      return _buildDesktopReminderTile(top5[i]);
                     },
                   ),
                 ),
@@ -1273,37 +1319,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildReminderTile(_ReminderGroup group) {
-    final r = group.reminder;
+  Widget _buildDesktopReminderTile(Reminder r) {
     final vehicleCtrl = Get.find<VehicleController>();
     final customerCtrl = Get.find<CustomerController>();
+    final reminderCtrl = Get.find<ReminderController>();
     final vehicle = vehicleCtrl.getVehicleById(r.vehicleId);
     final customer = customerCtrl.getCustomerById(r.customerId);
     final vehicleInfo = vehicle != null
         ? '${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber})'
         : null;
     final customerName = customer?.name;
-    Color dotColor;
-    Color bgColor;
-    String label;
 
-    switch (group.urgency) {
-      case ReminderUrgency.overdue:
-        dotColor = Colors.red;
-        bgColor = Colors.red.shade50;
-        label = "Overdue";
-        break;
-      case ReminderUrgency.dueThisWeek:
-        dotColor = Colors.orange;
-        bgColor = Colors.orange.shade50;
-        label = "This week";
-        break;
-      case ReminderUrgency.dueThisMonth:
-        dotColor = Colors.blue;
-        bgColor = Colors.blue.shade50;
-        label = "This month";
-        break;
-    }
+    final (Color dotColor, String label) = _reminderUrgency(r);
+    final isCompleted = r.completed;
+    final Color bgColor = isCompleted
+        ? Colors.green.shade50
+        : dotColor == Colors.red
+        ? Colors.red.shade50
+        : dotColor == Colors.orange
+        ? Colors.orange.shade50
+        : Colors.blue.shade50;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -1327,24 +1362,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Text(
+                            r.title,
+                            softWrap: true,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              decoration: isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: isCompleted ? Colors.grey : Colors.black,
+                            ),
+                          ),
+                          if (customerName != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.person_outline,
+                                    size: 12,
+                                    color: Colors.grey.shade900,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    customerName,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade900,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (vehicleInfo != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.directions_car_outlined,
+                                    size: 12,
+                                    color: Colors.grey.shade900,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    vehicleInfo,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade900,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (r.notes != null && r.notes!.isNotEmpty)
+                            Text(
+                              r.notes!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade900,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Column(
                             children: [
                               Text(
-                                r.title,
-                                style: const TextStyle(
-                                  fontSize: 14,
+                                "${r.dueDate.day.toString().padLeft(2, '0')}-"
+                                "${r.dueDate.month.toString().padLeft(2, '0')}-"
+                                "${r.dueDate.year}",
+                                style: TextStyle(
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w500,
+                                  decoration: isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: isCompleted
+                                      ? Colors.grey
+                                      : Colors.black,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(height: 5),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4,
@@ -1365,73 +1480,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          Text(
-                            "${r.dueDate.day.toString().padLeft(2, '0')}-"
-                            "${r.dueDate.month.toString().padLeft(2, '0')}-"
-                            "${r.dueDate.year}",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          AppPopupMenu(
+                            options: [
+                              if (!isCompleted)
+                                AppPopupMenuOption(
+                                  icon: Icons.check_sharp,
+                                  label: "Mark as Done",
+                                  onTap: () {
+                                    reminderCtrl.toggleCompleted(r.reminderId);
+                                  },
+                                ),
+                              AppPopupMenuOption(
+                                icon: Icons.delete_forever,
+                                label: "Delete",
+                                onTap: () {
+                                  reminderCtrl.deleteReminder(r.reminderId);
+                                },
+                              ),
+                              AppPopupMenuOption(
+                                icon: Icons.share_outlined,
+                                label: "Share on Whatsapp",
+                                onTap: () {
+                                  WhatsappShare.reminderShare(r.reminderId);
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      if (customerName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 1),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.person_outline,
-                                size: 12,
-                                color: Colors.grey.shade900,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                customerName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade900,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (vehicleInfo != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 1),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.directions_car_outlined,
-                                size: 12,
-                                color: Colors.grey.shade900,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                vehicleInfo,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade900,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (r.notes != null && r.notes!.isNotEmpty)
-                        Text(
-                          r.notes!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade900,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                     ],
                   ),
                 ),
@@ -1461,16 +1537,4 @@ class SearchResult {
     required this.secondary,
     required this.payload,
   });
-}
-
-// =====================================================
-// REMINDER GROUP MODEL
-// =====================================================
-enum ReminderUrgency { overdue, dueThisWeek, dueThisMonth }
-
-class _ReminderGroup {
-  final Reminder reminder;
-  final ReminderUrgency urgency;
-
-  _ReminderGroup(this.reminder, this.urgency);
 }

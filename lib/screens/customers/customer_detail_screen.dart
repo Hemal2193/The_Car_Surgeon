@@ -304,34 +304,46 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                             ),
                                             DataCell(
                                               AppPopupMenu(
-                                                onEdit: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (context) {
-                                                      return AddVehicleDialog(
-                                                        vehicle: v,
-                                                      );
-                                                    },
-                                                  );
-                                                },
-                                                onDelete: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (dialogContext) {
-                                                      return DeleteConfirmationDialog(
-                                                        title: 'Delete Vehicle',
-                                                        message:
-                                                            'Are you sure you want to delete ${v.registrationNumber}?',
-                                                        onDelete: () async {
-                                                          await vehicleController
-                                                              .deleteVehicle(
-                                                                v.vehicleId,
-                                                              );
+                                                options: [
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.edit_outlined,
+                                                    label: 'Edit',
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) {
+                                                          return AddVehicleDialog(
+                                                            vehicle: v,
+                                                          );
                                                         },
                                                       );
                                                     },
-                                                  );
-                                                },
+                                                  ),
+
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.delete_outline,
+                                                    label: 'Delete',
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (dialogContext) {
+                                                          return DeleteConfirmationDialog(
+                                                            title:
+                                                                'Delete Vehicle',
+                                                            message:
+                                                                'Are you sure you want to delete ${v.registrationNumber}?',
+                                                            onDelete: () async {
+                                                              await vehicleController
+                                                                  .deleteVehicle(
+                                                                    v.vehicleId,
+                                                                  );
+                                                            },
+                                                          );
+                                                        },
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
@@ -412,18 +424,27 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                             ),
                                             DataCell(
                                               AppPopupMenu(
-                                                onEdit: () {
-                                                  Get.to(
-                                                    () => CreateInvoiceScreen(
-                                                      invoice: invoice,
-                                                    ),
-                                                  );
-                                                },
-                                                onDelete: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (_) =>
-                                                        DeleteConfirmationDialog(
+                                                options: [
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.edit_outlined,
+                                                    label: 'Edit',
+                                                    onTap: () {
+                                                      Get.to(
+                                                        () =>
+                                                            CreateInvoiceScreen(
+                                                              invoice: invoice,
+                                                            ),
+                                                      );
+                                                    },
+                                                  ),
+
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.delete_outline,
+                                                    label: 'Delete',
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (_) => DeleteConfirmationDialog(
                                                           title:
                                                               "Delete Invoice",
                                                           message:
@@ -436,8 +457,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                                                 );
                                                           },
                                                         ),
-                                                  );
-                                                },
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
@@ -677,33 +700,43 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 subtitles: ["${v.make} ${v.model}", v.fuelType],
 
                 trailing: AppPopupMenu(
-                  onEdit: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) {
-                        return AddVehicleDialog(vehicle: v);
-                      },
-                    );
-                  },
-
-                  onDelete: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) {
-                        return DeleteConfirmationDialog(
-                          title: 'Delete Vehicle',
-
-                          message:
-                              'Are you sure you want to delete '
-                              '${v.registrationNumber}?',
-
-                          onDelete: () async {
-                            await vehicleController.deleteVehicle(v.vehicleId);
+                  options: [
+                    AppPopupMenuOption(
+                      icon: Icons.edit_outlined,
+                      label: 'Edit',
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) {
+                            return AddVehicleDialog(vehicle: v);
                           },
                         );
                       },
-                    );
-                  },
+                    ),
+
+                    AppPopupMenuOption(
+                      icon: Icons.delete_outline,
+                      label: 'Delete',
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) {
+                            return DeleteConfirmationDialog(
+                              title: 'Delete Vehicle',
+                              message:
+                                  'Are you sure you want to delete '
+                                  '${v.registrationNumber}?',
+                              onDelete: () async {
+                                await vehicleController.deleteVehicle(
+                                  v.vehicleId,
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             }).toList(),
@@ -801,30 +834,40 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
                     // const SizedBox(width: 5),
                     AppPopupMenu(
-                      onEdit: () {
-                        Get.to(() => CreateInvoiceScreen(invoice: invoice));
-                      },
+                      options: [
+                        AppPopupMenuOption(
+                          icon: Icons.edit_outlined,
+                          label: 'Edit',
+                          onTap: () {
+                            Get.to(() => CreateInvoiceScreen(invoice: invoice));
+                          },
+                        ),
 
-                      onDelete: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) {
-                            return DeleteConfirmationDialog(
-                              title: 'Delete Invoice',
+                        AppPopupMenuOption(
+                          icon: Icons.delete_outline,
+                          label: 'Delete',
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) {
+                                return DeleteConfirmationDialog(
+                                  title: 'Delete Invoice',
 
-                              message:
-                                  'Are you sure you want to delete '
-                                  '${invoice.invoiceId}?',
+                                  message:
+                                      'Are you sure you want to delete '
+                                      '${invoice.invoiceId}?',
 
-                              onDelete: () async {
-                                await invoiceController.deleteInvoice(
-                                  invoice.invoiceId,
+                                  onDelete: () async {
+                                    await invoiceController.deleteInvoice(
+                                      invoice.invoiceId,
+                                    );
+                                  },
                                 );
                               },
                             );
                           },
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ],
                 ),

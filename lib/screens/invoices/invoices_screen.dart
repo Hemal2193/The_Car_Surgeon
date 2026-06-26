@@ -7,6 +7,7 @@ import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
+import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/erp_mobile_tile.dart';
 
@@ -214,30 +215,50 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     ),
                                     DataCell(
                                       AppPopupMenu(
-                                        onEdit: () {
-                                          Get.to(
-                                            () => CreateInvoiceScreen(
-                                              invoice: inv,
-                                            ),
-                                          );
-                                        },
-                                        onDelete: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (_) =>
-                                                DeleteConfirmationDialog(
-                                                  title: "Delete Invoice",
-                                                  message:
-                                                      "Are you sure you want to delete ${inv.invoiceId}?",
-                                                  onDelete: () async {
-                                                    await invoiceController
-                                                        .deleteInvoice(
-                                                          inv.invoiceId,
-                                                        );
-                                                  },
+                                        options: [
+                                          AppPopupMenuOption(
+                                            icon: Icons.edit_outlined,
+                                            label: 'Edit',
+                                            onTap: () {
+                                              Get.to(
+                                                () => CreateInvoiceScreen(
+                                                  invoice: inv,
                                                 ),
-                                          );
-                                        },
+                                              );
+                                            },
+                                          ),
+
+                                          AppPopupMenuOption(
+                                            icon: Icons.delete_outline,
+                                            label: 'Delete',
+                                            onTap: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (_) =>
+                                                    DeleteConfirmationDialog(
+                                                      title: "Delete Invoice",
+                                                      message:
+                                                          "Are you sure you want to delete ${inv.invoiceId}?",
+                                                      onDelete: () async {
+                                                        await invoiceController
+                                                            .deleteInvoice(
+                                                              inv.invoiceId,
+                                                            );
+                                                      },
+                                                    ),
+                                              );
+                                            },
+                                          ),
+                                          AppPopupMenuOption(
+                                            icon: Icons.share_outlined,
+                                            label: "Send Payment Reminder",
+                                            onTap: () {
+                                              WhatsappShare.invoicePaymentReminder(
+                                                inv.invoiceId,
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -416,23 +437,35 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             ],
           ),
           AppPopupMenu(
-            onEdit: () {
-              Get.to(() => CreateInvoiceScreen(invoice: inv));
-            },
-            onDelete: () {
-              showDialog(
-                context: context,
-                builder: (_) => DeleteConfirmationDialog(
-                  title: 'Delete Invoice',
-                  message: 'Are you sure you want to delete ${inv.invoiceId}?',
-                  onDelete: () async {
-                    await Get.find<InvoiceController>().deleteInvoice(
-                      inv.invoiceId,
-                    );
-                  },
-                ),
-              );
-            },
+            options: [
+              AppPopupMenuOption(
+                icon: Icons.edit_outlined,
+                label: 'Edit',
+                onTap: () {
+                  Get.to(() => CreateInvoiceScreen(invoice: inv));
+                },
+              ),
+
+              AppPopupMenuOption(
+                icon: Icons.delete_outline,
+                label: 'Delete',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => DeleteConfirmationDialog(
+                      title: 'Delete Invoice',
+                      message:
+                          'Are you sure you want to delete ${inv.invoiceId}?',
+                      onDelete: () async {
+                        await Get.find<InvoiceController>().deleteInvoice(
+                          inv.invoiceId,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

@@ -78,7 +78,7 @@ class ReminderAdapter extends TypeAdapter<Reminder> {
 
 class ReminderTypeAdapter extends TypeAdapter<ReminderType> {
   @override
-  final int typeId = 8;
+  final int typeId = 9;
 
   @override
   ReminderType read(BinaryReader reader) {

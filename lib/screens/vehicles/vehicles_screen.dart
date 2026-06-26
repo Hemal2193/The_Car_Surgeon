@@ -305,51 +305,58 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       ],
 
       trailing: AppPopupMenu(
-        onEdit: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) {
-              return DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: 0.80,
-                minChildSize: 0.80,
-                maxChildSize: 0.92,
-                shouldCloseOnMinExtent: true,
-                builder: (context, scrollController) {
-                  return AddVehicleDialog(
-                    vehicle: vehicle,
-                    scrollController: scrollController,
+        options: [
+          AppPopupMenuOption(
+            icon: Icons.edit_outlined,
+            label: 'Edit',
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) {
+                  return DraggableScrollableSheet(
+                    expand: false,
+                    initialChildSize: 0.80,
+                    minChildSize: 0.80,
+                    maxChildSize: 0.92,
+                    shouldCloseOnMinExtent: true,
+                    builder: (context, scrollController) {
+                      return AddVehicleDialog(
+                        vehicle: vehicle,
+                        scrollController: scrollController,
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
 
-        onDelete: () {
-          showDialog(
-            context: context,
-
-            builder: (_) {
-              return DeleteConfirmationDialog(
-                title: 'Delete Vehicle',
-
-                message:
-                    'Are you sure you want to delete '
-                    '${vehicle.registrationNumber}?',
-
-                onDelete: () async {
-                  await Get.find<VehicleController>().deleteVehicle(
-                    vehicle.vehicleId,
+          AppPopupMenuOption(
+            icon: Icons.delete_outline,
+            label: 'Delete',
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) {
+                  return DeleteConfirmationDialog(
+                    title: 'Delete Vehicle',
+                    message:
+                        'Are you sure you want to delete '
+                        '${vehicle.registrationNumber}?',
+                    onDelete: () async {
+                      await Get.find<VehicleController>().deleteVehicle(
+                        vehicle.vehicleId,
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -389,32 +396,45 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
         DataCell(
           AppPopupMenu(
-            onEdit: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AddVehicleDialog(vehicle: vehicle);
-                },
-              );
-            },
-
-            onDelete: () {
-              showDialog(
-                context: context,
-                builder: (dialogContext) {
-                  return DeleteConfirmationDialog(
-                    title: 'Delete Vehicle',
-                    message:
-                        'Are you sure you want to delete ${vehicle.registrationNumber}?',
-                    onDelete: () async {
-                      final vehicleController = Get.find<VehicleController>();
-
-                      await vehicleController.deleteVehicle(vehicle.vehicleId);
+            options: [
+              AppPopupMenuOption(
+                icon: Icons.edit_outlined,
+                label: 'Edit',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AddVehicleDialog(vehicle: vehicle);
                     },
                   );
                 },
-              );
-            },
+              ),
+
+              AppPopupMenuOption(
+                icon: Icons.delete_outline,
+                label: 'Delete',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (dialogContext) {
+                      return DeleteConfirmationDialog(
+                        title: 'Delete Vehicle',
+                        message:
+                            'Are you sure you want to delete ${vehicle.registrationNumber}?',
+                        onDelete: () async {
+                          final vehicleController =
+                              Get.find<VehicleController>();
+
+                          await vehicleController.deleteVehicle(
+                            vehicle.vehicleId,
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ],

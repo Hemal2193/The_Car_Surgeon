@@ -70,15 +70,21 @@ class AppSidebar extends StatelessWidget {
           ),
 
           _buildMenuItem(
-            title: 'Items',
-            icon: Icons.inventory_2_outlined,
-            page: AppPage.items,
-          ),
-
-          _buildMenuItem(
             title: 'Invoices',
             icon: Icons.receipt_long_outlined,
             page: AppPage.invoices,
+          ),
+
+          _buildMenuItem(
+            title: 'Payments',
+            icon: Icons.payments_outlined,
+            page: AppPage.payments,
+          ),
+
+          _buildMenuItem(
+            title: 'Items',
+            icon: Icons.inventory_2_outlined,
+            page: AppPage.items,
           ),
         ],
       ),

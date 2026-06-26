@@ -6,6 +6,7 @@ import 'package:tcs/screens/customers/customers_screen.dart';
 import 'package:tcs/screens/dashboard/dashboard_screen.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/invoices/invoices_screen.dart';
+import 'package:tcs/screens/payments/payments_screen.dart';
 import 'package:tcs/screens/items/add_item_dialog.dart';
 import 'package:tcs/screens/items/items_screen.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
@@ -34,6 +35,9 @@ class HomePage extends StatelessWidget {
 
       case AppPage.invoices:
         return const InvoicesScreen();
+
+      case AppPage.payments:
+        return const PaymentsScreen();
 
       case AppPage.items:
         return const ItemsScreen();
@@ -183,7 +187,7 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
         label: const Text('Add Customer'),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, size: 20),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         heroTag: null,
@@ -192,6 +196,7 @@ class HomePage extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             isDismissible: true,
+            enableDrag: true,
             backgroundColor: Colors.transparent,
             builder: (_) {
               return DraggableScrollableSheet(
@@ -216,7 +221,7 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
         label: const Text('Add Vehicle'),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, size: 20),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         heroTag: null,
@@ -249,7 +254,7 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
         label: const Text('New Invoice'),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, size: 20),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         heroTag: null,
@@ -265,7 +270,7 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
         label: const Text('Add Item'),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, size: 20),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         heroTag: null,

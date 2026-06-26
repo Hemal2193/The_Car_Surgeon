@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
 
-class AppPopupMenu extends StatelessWidget {
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+class AppPopupMenuOption {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  const AppPopupMenu({super.key, required this.onEdit, required this.onDelete});
+  const AppPopupMenuOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+}
+
+class AppPopupMenu extends StatelessWidget {
+  final List<AppPopupMenuOption> options;
+
+  const AppPopupMenu({
+    super.key,
+    required this.options,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.black),
+    return PopupMenuButton<int>(
+      icon: const Icon(
+        Icons.more_vert,
+        color: Colors.black,
+      ),
 
       color: Colors.white,
 
@@ -20,43 +37,41 @@ class AppPopupMenu extends StatelessWidget {
         side: const BorderSide(color: Colors.black12),
       ),
 
-      onSelected: (value) {
-        if (value == 'edit') {
-          onEdit();
-        }
-
-        if (value == 'delete') {
-          onDelete();
-        }
+      onSelected: (index) {
+        options[index].onTap();
       },
 
-      itemBuilder: (context) => [
-        const PopupMenuItem<String>(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18, color: Colors.black),
+      itemBuilder: (context) {
+        return List.generate(
+          options.length,
+          (index) {
+            final option = options[index];
 
-              SizedBox(width: 10),
+            return PopupMenuItem<int>(
+              value: index,
 
-              Text('Edit', style: TextStyle(color: Colors.black)),
-            ],
-          ),
-        ),
+              child: Row(
+                children: [
+                  Icon(
+                    option.icon,
+                    size: 18,
+                    color: Colors.black,
+                  ),
 
-        const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18, color: Colors.black),
+                  const SizedBox(width: 10),
 
-              SizedBox(width: 10),
-
-              Text('Delete', style: TextStyle(color: Colors.black)),
-            ],
-          ),
-        ),
-      ],
+                  Text(
+                    option.label,
+                    style: const TextStyle(
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

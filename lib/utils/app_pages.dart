@@ -1,1 +1,1 @@
-enum AppPage { dashboard, customers, vehicles, invoices, items }
+enum AppPage { dashboard, customers, vehicles, invoices, items, payments }

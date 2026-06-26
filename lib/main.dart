@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcs/controllers/payment_controller.dart';
 import 'package:tcs/models/payment_model.dart';
 import 'package:tcs/models/sync_status.dart';
+import 'package:tcs/screens/auth/login_screen.dart';
+import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -95,11 +97,14 @@ Future<void> main() async {
     Hive.registerAdapter(InvoicePaymentStatusAdapter());
   }
 
+  if (!Hive.isAdapterRegistered(9)) {
+    Hive.registerAdapter(ReminderTypeAdapter());
+  }
+
   // OPEN BOXES
   await Hive.openBox<Customer>(HiveBoxes.customers);
   await Hive.openBox<Vehicle>(HiveBoxes.vehicles);
   await Hive.openBox<Item>(HiveBoxes.items);
-
   await Hive.openBox<Invoice>(HiveBoxes.invoices);
   await Hive.openBox<Payment>(HiveBoxes.payments);
   await Hive.openBox<Reminder>(HiveBoxes.reminders);
@@ -130,6 +135,11 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  Future<bool> _isApproved() async {
+    if (!AuthService.isLoggedIn) return false;
+    return AuthService.getUserApprovalStatus(AuthService.currentUser!.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
@@ -138,8 +148,41 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          extendedSizeConstraints: BoxConstraints(
+            minHeight: 40, // Default is around 56
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+          extendedPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          extendedIconLabelSpacing: 4,
+
+          iconSize: 12,
+          extendedTextStyle: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
-      home: const HomePage(),
+      home: FutureBuilder<bool>(
+        future: _isApproved(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: Colors.white,
+              body: Center(
+                child: CircularProgressIndicator(color: Colors.black),
+              ),
+            );
+          }
+          final approved = snapshot.data ?? false;
+          if (AuthService.isLoggedIn && approved) {
+            return const HomePage();
+          }
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }

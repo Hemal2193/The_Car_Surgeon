@@ -272,8 +272,15 @@ class ReminderController extends GetxController {
     return reminders.firstWhereOrNull((r) => r.reminderId == reminderId);
   }
 
+  List<Reminder> getRemindersByInvoiceId(String invoiceId) {
+    return reminders.where((r) => r.invoiceId == invoiceId).toList();
+  }
+
   Reminder? getReminderByInvoiceId(String invoiceId) {
-    return reminders.firstWhereOrNull((r) => r.invoiceId == invoiceId);
+    final list = getRemindersByInvoiceId(invoiceId);
+    if (list.isEmpty) return null;
+    list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    return list.first;
   }
 
   List<Reminder> getRemindersForVehicle(String vehicleId) {
@@ -326,24 +333,28 @@ class ReminderController extends GetxController {
 
   List<Reminder> getDueToday() {
     final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final endOfToday = startOfToday.add(const Duration(days: 1));
 
     return reminders.where((r) {
       return !r.completed &&
-          r.dueDate.year == now.year &&
-          r.dueDate.month == now.month &&
-          r.dueDate.day == now.day;
+          r.dueDate.isAfter(startOfToday) &&
+          r.dueDate.isBefore(endOfToday);
     }).toList();
   }
 
   List<Reminder> getDueThisWeek() {
     final now = DateTime.now();
-    final endOfWeek = now.add(Duration(days: 7 - now.weekday));
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final endOfWeek = startOfToday.add(
+      Duration(days: 8 - now.weekday),
+    );
 
     final list = reminders
         .where(
           (r) =>
               !r.completed &&
-              r.dueDate.isAfter(now) &&
+              r.dueDate.isAfter(startOfToday) &&
               r.dueDate.isBefore(endOfWeek),
         )
         .toList();
@@ -355,13 +366,14 @@ class ReminderController extends GetxController {
 
   List<Reminder> getDueThisMonth() {
     final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
     final endOfMonth = DateTime(now.year, now.month + 1, 1);
 
     final list = reminders
         .where(
           (r) =>
               !r.completed &&
-              r.dueDate.isAfter(now) &&
+              r.dueDate.isAfter(startOfToday) &&
               r.dueDate.isBefore(endOfMonth),
         )
         .toList();

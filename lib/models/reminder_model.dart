@@ -75,7 +75,7 @@ class Reminder extends HiveObject {
         updatedAt = updatedAt ?? DateTime.now();
 }
 
-@HiveType(typeId: 8)
+@HiveType(typeId: 9)
 enum ReminderType {
   @HiveField(0)
   service,

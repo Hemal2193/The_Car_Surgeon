@@ -294,85 +294,99 @@ class _CustomersScreenState extends State<CustomersScreen> {
       subtitles: [customer.contact1, "Vehicles: $vehicleCount"],
 
       trailing: AppPopupMenu(
-        onEdit: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) {
-              return DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: 0.80,
-                minChildSize: 0.80,
-                maxChildSize: 0.92,
-                shouldCloseOnMinExtent: true,
-                builder: (context, scrollController) {
-                  return AddCustomerDialog(
-                    customer: customer,
-                    scrollController: scrollController,
+        options: [
+          AppPopupMenuOption(
+            icon: Icons.edit_outlined,
+            label: 'Edit',
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) {
+                  return DraggableScrollableSheet(
+                    expand: false,
+                    initialChildSize: 0.80,
+                    minChildSize: 0.80,
+                    maxChildSize: 0.92,
+                    shouldCloseOnMinExtent: true,
+                    builder: (context, scrollController) {
+                      return AddCustomerDialog(
+                        customer: customer,
+                        scrollController: scrollController,
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
 
-        onDelete: () {
-          final vehicleCount = Get.find<VehicleController>()
-              .getVehicleCountForCustomer(customer.customerId);
-          final invoiceCount = Get.find<InvoiceController>().invoices
-              .where((i) => i.customerId == customer.customerId)
-              .length;
+          AppPopupMenuOption(
+            icon: Icons.delete_outline,
+            label: 'Delete',
+            onTap: () {
+              final vehicleCount = Get.find<VehicleController>()
+                  .getVehicleCountForCustomer(customer.customerId);
+              final invoiceCount = Get.find<InvoiceController>().invoices
+                  .where((i) => i.customerId == customer.customerId)
+                  .length;
 
-          if (vehicleCount > 0 || invoiceCount > 0) {
-            String message = 'Cannot delete ${customer.name}: ';
-            List<String> reasons = [];
-            if (vehicleCount > 0) {
-              reasons.add('$vehicleCount vehicle(s)');
-            }
-            if (invoiceCount > 0) {
-              reasons.add('$invoiceCount invoice(s)');
-            }
-            message += 'has ${reasons.join(' and ')} attached.';
+              if (vehicleCount > 0 || invoiceCount > 0) {
+                String message = 'Cannot delete ${customer.name}: ';
+                List<String> reasons = [];
 
-            showDialog(
-              context: context,
-              builder: (_) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  title: const Text('Cannot Delete'),
-                  content: Text(message),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'OK',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                    ),
-                  ],
+                if (vehicleCount > 0) {
+                  reasons.add('$vehicleCount vehicle(s)');
+                }
+
+                if (invoiceCount > 0) {
+                  reasons.add('$invoiceCount invoice(s)');
+                }
+
+                message += 'has ${reasons.join(' and ')} attached.';
+
+                showDialog(
+                  context: context,
+                  builder: (_) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: const Text('Cannot Delete'),
+                      content: Text(message),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'OK',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
-              },
-            );
-            return;
-          }
+                return;
+              }
 
-          showDialog(
-            context: context,
-            builder: (_) {
-              return DeleteConfirmationDialog(
-                title: 'Delete Customer',
-                message: 'Are you sure you want to delete ${customer.name}?',
-                onDelete: () async {
-                  await Get.find<CustomerController>().deleteCustomer(
-                    customer.customerId,
+              showDialog(
+                context: context,
+                builder: (_) {
+                  return DeleteConfirmationDialog(
+                    title: 'Delete Customer',
+                    message:
+                        'Are you sure you want to delete ${customer.name}?',
+                    onDelete: () async {
+                      await Get.find<CustomerController>().deleteCustomer(
+                        customer.customerId,
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -412,70 +426,84 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
         DataCell(
           AppPopupMenu(
-            onEdit: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AddCustomerDialog(customer: customer);
+            options: [
+              AppPopupMenuOption(
+                icon: Icons.edit_outlined,
+                label: 'Edit',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AddCustomerDialog(customer: customer);
+                    },
+                  );
                 },
-              );
-            },
+              ),
 
-            onDelete: () {
-              final vehicleCount = Get.find<VehicleController>()
-                  .getVehicleCountForCustomer(customer.customerId);
-              final invoiceCount = Get.find<InvoiceController>().invoices
-                  .where((i) => i.customerId == customer.customerId)
-                  .length;
+              AppPopupMenuOption(
+                icon: Icons.delete_outline,
+                label: 'Delete',
+                onTap: () {
+                  final vehicleCount = Get.find<VehicleController>()
+                      .getVehicleCountForCustomer(customer.customerId);
+                  final invoiceCount = Get.find<InvoiceController>().invoices
+                      .where((i) => i.customerId == customer.customerId)
+                      .length;
 
-              if (vehicleCount > 0 || invoiceCount > 0) {
-                String message = 'Cannot delete ${customer.name}: ';
-                List<String> reasons = [];
-                if (vehicleCount > 0) {
-                  reasons.add('$vehicleCount vehicle(s)');
-                }
-                if (invoiceCount > 0) {
-                  reasons.add('$invoiceCount invoice(s)');
-                }
-                message += 'has ${reasons.join(' and ')} attached.';
+                  if (vehicleCount > 0 || invoiceCount > 0) {
+                    String message = 'Cannot delete ${customer.name}: ';
+                    List<String> reasons = [];
 
-                showDialog(
-                  context: context,
-                  builder: (_) {
-                    return AlertDialog(
-                      backgroundColor: Colors.white,
-                      title: const Text('Cannot Delete'),
-                      content: Text(message),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
+                    if (vehicleCount > 0) {
+                      reasons.add('$vehicleCount vehicle(s)');
+                    }
+
+                    if (invoiceCount > 0) {
+                      reasons.add('$invoiceCount invoice(s)');
+                    }
+
+                    message += 'has ${reasons.join(' and ')} attached.';
+
+                    showDialog(
+                      context: context,
+                      builder: (_) {
+                        return AlertDialog(
+                          backgroundColor: Colors.white,
+                          title: const Text('Cannot Delete'),
+                          content: Text(message),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        );
+                      },
                     );
-                  },
-                );
-                return;
-              }
+                    return;
+                  }
 
-              showDialog(
-                context: context,
-                builder: (dialogContext) {
-                  return DeleteConfirmationDialog(
-                    title: 'Delete Customer',
-                    message:
-                        'Are you sure you want to delete ${customer.name}?',
-                    onDelete: () async {
-                      final customerController = Get.find<CustomerController>();
+                  showDialog(
+                    context: context,
+                    builder: (dialogContext) {
+                      return DeleteConfirmationDialog(
+                        title: 'Delete Customer',
+                        message:
+                            'Are you sure you want to delete ${customer.name}?',
+                        onDelete: () async {
+                          final customerController =
+                              Get.find<CustomerController>();
 
-                      await customerController.deleteCustomer(
-                        customer.customerId,
+                          await customerController.deleteCustomer(
+                            customer.customerId,
+                          );
+                        },
                       );
                     },
                   );
                 },
-              );
-            },
+              ),
+            ],
           ),
         ),
       ],

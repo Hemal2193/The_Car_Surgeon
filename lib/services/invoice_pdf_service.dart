@@ -1,5 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:ffi';
+
+import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart' show rootBundle, MethodChannel;
 import 'package:get/get.dart';
 import 'package:number_to_words_english/number_to_words_english.dart';
@@ -16,6 +19,7 @@ import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:printing/printing.dart';
 import 'package:tcs/models/customer_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:win32/win32.dart';
 import '../models/invoice_model.dart';
 
 class InvoicePdfService {
@@ -162,19 +166,42 @@ class InvoicePdfService {
 
     final savedPath = pdfFile.path;
 
-    // Open WhatsApp chat directly
     if (mobileNo != null && mobileNo.trim().isNotEmpty) {
-      try {
-        final phone = mobileNo.replaceAll(RegExp(r'[^0-9]'), '');
+      final phone = mobileNo.replaceAll(RegExp(r'[^0-9]'), '');
 
-        await Pasteboard.writeFiles([savedPath]);
+      await Pasteboard.writeFiles([savedPath]);
+
+      final whatsappUri = 'whatsapp://send?phone=91$phone'.toNativeUtf16();
+      final open = 'open'.toNativeUtf16();
+
+      try {
+        final result = ShellExecute(
+          0,
+          open,
+          whatsappUri,
+          nullptr,
+          nullptr,
+          SW_SHOWNORMAL,
+        );
+
+        calloc.free(open);
+        calloc.free(whatsappUri);
+
+        // ShellExecute returns <= 32 if it failed
+        if (result <= 32) {
+          await launchUrl(
+            Uri.parse('https://wa.me/91$phone'),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      } catch (_) {
+        calloc.free(open);
+        calloc.free(whatsappUri);
 
         await launchUrl(
           Uri.parse('https://wa.me/91$phone'),
           mode: LaunchMode.externalApplication,
         );
-      } catch (_) {
-        // Ignore errors
       }
     }
 
@@ -642,6 +669,12 @@ class InvoicePdfService {
       (sum, item) => sum + item.totalAmount,
     );
 
+    // Rows that get grey background: Discount, Advance, Total, Balance
+    final int discountRowIndex = invoice.items.length + 1;
+    final int advanceRowIndex = invoice.items.length + 2;
+    final int totalRowIndex = invoice.items.length + 3;
+    final int balanceRowIndex = invoice.items.length + 4;
+
     return pw.Container(
       decoration: pw.BoxDecoration(
         border: pw.Border.all(color: PdfColors.grey300),
@@ -668,6 +701,7 @@ class InvoicePdfService {
           ],
 
           data: [
+            // Item rows
             ...List.generate(invoice.items.length, (i) {
               final item = invoice.items[i];
 
@@ -683,6 +717,31 @@ class InvoicePdfService {
               ];
             }),
 
+            // Discount row
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "Discount",
+              invoice.discount.toStringAsFixed(2),
+            ],
+
+            // Advance row
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "Advance",
+              invoice.advanceAmount.toStringAsFixed(2),
+            ],
+
+            // Total row
             [
               "",
               "Total",
@@ -692,6 +751,18 @@ class InvoicePdfService {
               "",
               totalTax.toStringAsFixed(2),
               totalAmount.toStringAsFixed(2),
+            ],
+
+            // Balance row
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "Balance",
+              invoice.balanceAmount.toStringAsFixed(2),
             ],
           ],
 
@@ -722,12 +793,17 @@ class InvoicePdfService {
           cellAlignment: pw.Alignment.center,
           headerAlignment: pw.Alignment.center,
 
-          cellDecoration: (index, data, rowNum) {
-            if (rowNum == invoice.items.length + 1) {
-              return const pw.BoxDecoration(color: PdfColors.grey200);
-            }
-            return const pw.BoxDecoration();
-          },
+          oddRowDecoration: pw.BoxDecoration(color: PdfColors.grey100),
+
+          // cellDecoration: (index, data, rowNum) {
+          //   if (rowNum == discountRowIndex ||
+          //       rowNum == advanceRowIndex ||
+          //       rowNum == totalRowIndex ||
+          //       rowNum == balanceRowIndex) {
+          //     return const pw.BoxDecoration(color: PdfColors.grey200);
+          //   }
+          //   return const pw.BoxDecoration();
+          // },
         ),
       ),
     );

@@ -289,46 +289,56 @@ class _ItemsScreenState extends State<ItemsScreen> {
       ],
 
       trailing: AppPopupMenu(
-        onEdit: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) {
-              return DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: 0.80,
-                minChildSize: 0.80,
-                maxChildSize: 0.92,
-                shouldCloseOnMinExtent: true,
-                builder: (context, scrollController) {
-                  return AddItemDialog(item: item, scrollController: scrollController);
+        options: [
+          AppPopupMenuOption(
+            icon: Icons.edit_outlined,
+            label: 'Edit',
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) {
+                  return DraggableScrollableSheet(
+                    expand: false,
+                    initialChildSize: 0.80,
+                    minChildSize: 0.80,
+                    maxChildSize: 0.92,
+                    shouldCloseOnMinExtent: true,
+                    builder: (context, scrollController) {
+                      return AddItemDialog(
+                        item: item,
+                        scrollController: scrollController,
+                      );
+                    },
+                  );
                 },
               );
             },
-          );
-        },
+          ),
 
-        onDelete: () {
-          showDialog(
-            context: context,
-
-            builder: (_) {
-              return DeleteConfirmationDialog(
-                title: 'Delete Item',
-
-                message:
-                    'Are you sure you want to delete '
-                    '${item.name}?',
-
-                onDelete: () async {
-                  await Get.find<ItemController>().deleteItem(item.itemId);
+          AppPopupMenuOption(
+            icon: Icons.delete_outline,
+            label: 'Delete',
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) {
+                  return DeleteConfirmationDialog(
+                    title: 'Delete Item',
+                    message:
+                        'Are you sure you want to delete '
+                        '${item.name}?',
+                    onDelete: () async {
+                      await Get.find<ItemController>().deleteItem(item.itemId);
+                    },
+                  );
                 },
               );
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -359,31 +369,42 @@ class _ItemsScreenState extends State<ItemsScreen> {
 
         DataCell(
           AppPopupMenu(
-            onEdit: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AddItemDialog(item: item);
-                },
-              );
-            },
-
-            onDelete: () {
-              showDialog(
-                context: context,
-                builder: (dialogContext) {
-                  return DeleteConfirmationDialog(
-                    title: 'Delete Item',
-                    message: 'Are you sure you want to delete ${item.name}?',
-                    onDelete: () async {
-                      final itemController = Get.find<ItemController>();
-
-                      await itemController.deleteItem(item.itemId);
+            options: [
+              AppPopupMenuOption(
+                icon: Icons.edit_outlined,
+                label: 'Edit',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AddItemDialog(item: item);
                     },
                   );
                 },
-              );
-            },
+              ),
+
+              AppPopupMenuOption(
+                icon: Icons.delete_outline,
+                label: 'Delete',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (dialogContext) {
+                      return DeleteConfirmationDialog(
+                        title: 'Delete Item',
+                        message:
+                            'Are you sure you want to delete ${item.name}?',
+                        onDelete: () async {
+                          final itemController = Get.find<ItemController>();
+
+                          await itemController.deleteItem(item.itemId);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ],

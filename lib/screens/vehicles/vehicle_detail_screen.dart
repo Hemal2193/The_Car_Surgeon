@@ -398,18 +398,27 @@ class VehicleDetailScreen extends StatelessWidget {
                                             ),
                                             DataCell(
                                               AppPopupMenu(
-                                                onEdit: () {
-                                                  Get.to(
-                                                    () => CreateInvoiceScreen(
-                                                      invoice: invoice,
-                                                    ),
-                                                  );
-                                                },
-                                                onDelete: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (_) =>
-                                                        DeleteConfirmationDialog(
+                                                options: [
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.edit_outlined,
+                                                    label: 'Edit',
+                                                    onTap: () {
+                                                      Get.to(
+                                                        () =>
+                                                            CreateInvoiceScreen(
+                                                              invoice: invoice,
+                                                            ),
+                                                      );
+                                                    },
+                                                  ),
+
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.delete_outline,
+                                                    label: 'Delete',
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (_) => DeleteConfirmationDialog(
                                                           title:
                                                               "Delete Invoice",
                                                           message:
@@ -422,8 +431,10 @@ class VehicleDetailScreen extends StatelessWidget {
                                                                 );
                                                           },
                                                         ),
-                                                  );
-                                                },
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
@@ -824,30 +835,40 @@ class VehicleDetailScreen extends StatelessWidget {
 
                     // const SizedBox(width: 5),
                     AppPopupMenu(
-                      onEdit: () {
-                        Get.to(() => CreateInvoiceScreen(invoice: invoice));
-                      },
+                      options: [
+                        AppPopupMenuOption(
+                          icon: Icons.edit_outlined,
+                          label: 'Edit',
+                          onTap: () {
+                            Get.to(() => CreateInvoiceScreen(invoice: invoice));
+                          },
+                        ),
 
-                      onDelete: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) {
-                            return DeleteConfirmationDialog(
-                              title: 'Delete Invoice',
+                        AppPopupMenuOption(
+                          icon: Icons.delete_outline,
+                          label: 'Delete',
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) {
+                                return DeleteConfirmationDialog(
+                                  title: 'Delete Invoice',
 
-                              message:
-                                  'Are you sure you want to delete '
-                                  '${invoice.invoiceId}?',
+                                  message:
+                                      'Are you sure you want to delete '
+                                      '${invoice.invoiceId}?',
 
-                              onDelete: () async {
-                                await invoiceController.deleteInvoice(
-                                  invoice.invoiceId,
+                                  onDelete: () async {
+                                    await invoiceController.deleteInvoice(
+                                      invoice.invoiceId,
+                                    );
+                                  },
                                 );
                               },
                             );
                           },
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ],
                 ),

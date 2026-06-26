@@ -21,6 +21,30 @@ import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
 import 'add_item_popup.dart';
 
+// =========================================================
+// DATA CLASS FOR REMINDERS IN THIS FORM
+// =========================================================
+class _InvoiceReminderData {
+  final TextEditingController titleController;
+  final TextEditingController notesController;
+  DateTime dueDate;
+  String? existingReminderId; // null = new reminder
+
+  _InvoiceReminderData({
+    String title = '',
+    String notes = '',
+    DateTime? dueDate,
+    this.existingReminderId,
+  }) : titleController = TextEditingController(text: title),
+       notesController = TextEditingController(text: notes),
+       dueDate = dueDate ?? DateTime.now().add(const Duration(days: 7));
+
+  void dispose() {
+    titleController.dispose();
+    notesController.dispose();
+  }
+}
+
 class CreateInvoiceScreen extends StatefulWidget {
   final Invoice? invoice;
 
@@ -57,12 +81,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     'Cheque',
   ];
 
-  // Reminder fields
-  final TextEditingController _reminderTitleController =
-      TextEditingController();
-  final TextEditingController _reminderNotesController =
-      TextEditingController();
-  DateTime _reminderDueDate = DateTime.now().add(const Duration(days: 7));
+  // Reminder fields – now supports multiple reminders
+  final List<_InvoiceReminderData> _reminders = [];
 
   double get subtotalBeforeDiscount =>
       rows.fold(0, (sum, e) => sum + e.grossAmount);
@@ -114,14 +134,20 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       }
       _selectedPaymentMethod = invoice.paymentMethod;
 
-      // Load existing reminder if editing
-      final reminder = Get.find<ReminderController>().getReminderByInvoiceId(
-        invoice.invoiceId,
-      );
-      if (reminder != null) {
-        _reminderTitleController.text = reminder.title;
-        _reminderNotesController.text = reminder.notes ?? '';
-        _reminderDueDate = reminder.dueDate;
+      // Load all existing reminders for this invoice
+      final existingReminders = Get.find<ReminderController>()
+          .getRemindersByInvoiceId(invoice.invoiceId);
+      if (existingReminders.isNotEmpty) {
+        for (final r in existingReminders) {
+          _reminders.add(
+            _InvoiceReminderData(
+              title: r.title,
+              notes: r.notes ?? '',
+              dueDate: r.dueDate,
+              existingReminderId: r.reminderId,
+            ),
+          );
+        }
       }
     }
   }
@@ -130,10 +156,24 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   void dispose() {
     _advanceController.dispose();
     _discountController.dispose();
-    _reminderTitleController.dispose();
-    _reminderNotesController.dispose();
+    for (final r in _reminders) {
+      r.dispose();
+    }
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _addEmptyReminder() {
+    setState(() {
+      _reminders.add(_InvoiceReminderData());
+    });
+  }
+
+  void _removeReminder(int index) {
+    setState(() {
+      _reminders[index].dispose();
+      _reminders.removeAt(index);
+    });
   }
 
   /// Generic date picker that allows selecting any date (past, present, or future).
@@ -210,77 +250,76 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     }
   }
 
-  Future<void> _pickDueDate() async {
-    final picked = await _pickDate(_reminderDueDate);
-    if (picked != null) {
-      setState(() {
-        _reminderDueDate = picked;
-      });
-    }
-  }
-
-  void _createReminderIfNeeded(
+  Future<void> _createRemindersIfNeeded(
     String invoiceId,
     String customerId,
     String vehicleId,
-  ) {
-    final title = _reminderTitleController.text.trim();
-    if (title.isEmpty) return;
-
-    final reminder = Reminder(
-      reminderId: IdGenerator.generateReminderId(),
-      customerId: customerId,
-      vehicleId: vehicleId,
-      invoiceId: invoiceId,
-      dueDate: _reminderDueDate,
-      title: title,
-      notes: _reminderNotesController.text.trim().isNotEmpty
-          ? _reminderNotesController.text.trim()
-          : null,
-      type: ReminderType.service,
-    );
-
-    Get.find<ReminderController>().addReminder(reminder);
-  }
-
-  void _updateReminderIfNeeded(
-    String invoiceId,
-    String customerId,
-    String vehicleId,
-  ) {
-    final title = _reminderTitleController.text.trim();
+  ) async {
     final reminderCtrl = Get.find<ReminderController>();
+    for (final r in _reminders) {
+      final title = r.titleController.text.trim();
+      if (title.isEmpty) continue;
 
-    final existing = reminderCtrl.getReminderByInvoiceId(invoiceId);
-
-    if (title.isEmpty) {
-      if (existing != null) {
-        reminderCtrl.deleteReminder(existing.reminderId);
+      if (r.existingReminderId != null) {
+        // Update existing
+        final existing = reminderCtrl.getReminderById(r.existingReminderId!);
+        if (existing != null) {
+          existing.title = title;
+          existing.notes = r.notesController.text.trim().isNotEmpty
+              ? r.notesController.text.trim()
+              : null;
+          existing.dueDate = r.dueDate;
+          try {
+            await reminderCtrl.updateReminder(existing);
+          } catch (e, st) {
+            Get.snackbar(
+              'Reminder Save Error',
+              'Failed to update reminder: $e',
+            );
+            print('updateReminder error: $e');
+            print(st);
+          }
+        }
+      } else {
+        // Create new
+        final reminder = Reminder(
+          reminderId: IdGenerator.generateReminderId(),
+          customerId: customerId,
+          vehicleId: vehicleId,
+          invoiceId: invoiceId,
+          dueDate: r.dueDate,
+          title: title,
+          notes: r.notesController.text.trim().isNotEmpty
+              ? r.notesController.text.trim()
+              : null,
+          type: ReminderType.service,
+        );
+        try {
+          await reminderCtrl.addReminder(reminder);
+          print("Reminder added");
+        } catch (e, st) {
+          Get.snackbar('Reminder Save Error', 'Failed to create reminder: $e');
+          print('addReminder error: $e');
+          print(st);
+        }
       }
-      return;
     }
+  }
 
-    if (existing != null) {
-      existing.title = title;
-      existing.notes = _reminderNotesController.text.trim().isNotEmpty
-          ? _reminderNotesController.text.trim()
-          : null;
-      existing.dueDate = _reminderDueDate;
-      reminderCtrl.updateReminder(existing);
-    } else {
-      final reminder = Reminder(
-        reminderId: IdGenerator.generateReminderId(),
-        customerId: customerId,
-        vehicleId: vehicleId,
-        invoiceId: invoiceId,
-        dueDate: _reminderDueDate,
-        title: title,
-        notes: _reminderNotesController.text.trim().isNotEmpty
-            ? _reminderNotesController.text.trim()
-            : null,
-        type: ReminderType.service,
-      );
-      reminderCtrl.addReminder(reminder);
+  Future<void> _deleteRemovedReminders() async {
+    if (!isEditing) return;
+    final invoiceId = widget.invoice!.invoiceId;
+    final reminderCtrl = Get.find<ReminderController>();
+    final existingAll = reminderCtrl.getRemindersByInvoiceId(invoiceId);
+    final keptIds = _reminders
+        .map((r) => r.existingReminderId)
+        .where((id) => id != null)
+        .toSet();
+
+    for (final existing in existingAll) {
+      if (!keptIds.contains(existing.reminderId)) {
+        await reminderCtrl.deleteReminder(existing.reminderId);
+      }
     }
   }
 
@@ -299,8 +338,24 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
     final invoiceCtrl = Get.find<InvoiceController>();
     if (selectedCustomer == null || selectedVehicle == null || rows.isEmpty) {
+      Get.snackbar(
+        "Validation Error",
+        "Please select customer, vehicle, and add items.",
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return;
     }
+
+    // for (final r in _reminders) {
+    //   if (r.titleController.text.trim().isEmpty) {
+    //     Get.snackbar(
+    //       "Validation Error",
+    //       "Reminder title cannot be empty.",
+    //       snackPosition: SnackPosition.BOTTOM,
+    //     );
+    //     return;
+    //   }
+    // }
 
     final invoiceItems = rows.map((r) {
       return InvoiceItem(
@@ -331,17 +386,46 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       paymentMethod: _selectedPaymentMethod,
     );
 
-    await invoiceCtrl.addInvoice(invoice);
-    final saved = invoiceCtrl.getInvoiceById(invoice.invoiceId);
-    debugPrint("Saved discount = ${saved?.discount}");
-
     if (isEditing) {
-      await Get.find<InvoiceController>().updateInvoice(invoice);
-      _updateReminderIfNeeded(
-        invoice.invoiceId,
-        invoice.customerId,
-        invoice.vehicleId,
-      );
+      try {
+        await invoiceCtrl.updateInvoice(invoice);
+        debugPrint("Invoice updated successfully");
+      } catch (e, st) {
+        debugPrint("updateInvoice error: $e");
+        debugPrint("$st");
+        Get.snackbar(
+          "Invoice Save Error",
+          "Failed to update invoice: $e",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+      // Delete reminders that were removed (with error isolation)
+      try {
+        await _deleteRemovedReminders();
+        debugPrint("deleteRemovedReminders completed");
+      } catch (e, st) {
+        debugPrint("deleteRemovedReminders error: $e");
+        debugPrint("$st");
+      }
+      // Create/update remaining reminders (with error isolation)
+      try {
+        await _createRemindersIfNeeded(
+          invoice.invoiceId,
+          invoice.customerId,
+          invoice.vehicleId,
+        );
+        debugPrint("createRemindersIfNeeded completed");
+      } catch (e, st) {
+        debugPrint("createRemindersIfNeeded error: $e");
+        debugPrint("$st");
+        Get.snackbar(
+          "Reminder Save Error",
+          "Failed to save reminders: $e",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      Get.back();
       Get.snackbar(
         margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
         "Invoice Updated",
@@ -350,8 +434,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       );
       return;
     } else {
-      await Get.find<InvoiceController>().addInvoice(invoice);
-      _createReminderIfNeeded(
+      await invoiceCtrl.addInvoice(invoice);
+      await _createRemindersIfNeeded(
         invoice.invoiceId,
         invoice.customerId,
         invoice.vehicleId,
@@ -364,6 +448,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       selectedVehicle = null;
       _advanceController.clear();
       _discountController.clear();
+      for (final r in _reminders) {
+        r.dispose();
+      }
+      _reminders.clear();
       _customerSelectorVersion++;
     });
 
@@ -402,7 +490,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   indicatorColor: Colors.black,
                   tabs: [
                     Tab(text: 'Invoice'),
-                    Tab(text: 'Reminder'),
+                    Tab(text: 'Reminders'),
                   ],
                 ),
               ),
@@ -942,86 +1030,167 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
+  // =========================================================
+  // MOBILE REMINDER TAB – MULTIPLE REMINDERS
+  // =========================================================
   Widget _buildMobileReminderTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: _mobileReminderSection(),
-    );
-  }
-
-  Widget _mobileReminderSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-
-        const Text(
-          "Reminder (Optional)",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-
-        const SizedBox(height: 10),
-
-        const Text("Title", style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _reminderTitleController,
-          decoration: InputDecoration(
-            hintText: "e.g. Follow up payment",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Reminders (Optional)",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
-        ),
+          const SizedBox(height: 16),
 
-        const SizedBox(height: 14),
+          // List of reminders
+          ...List.generate(_reminders.length, (i) {
+            return _mobileReminderCard(i);
+          }),
 
-        Row(
-          children: [
-            const Text(
-              "Due Date",
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const Spacer(),
-            InkWell(
-              onTap: _pickDueDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
+          // Add reminder button
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _addEmptyReminder,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.black),
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  "${_reminderDueDate.day.toString().padLeft(2, '0')}-"
-                  "${_reminderDueDate.month.toString().padLeft(2, '0')}-"
-                  "${_reminderDueDate.year}",
-                  style: const TextStyle(fontSize: 13),
-                ),
               ),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text("Add Reminder"),
             ),
-          ],
-        ),
-
-        const SizedBox(height: 14),
-
-        const Text("Notes", style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-
-        TextField(
-          controller: _reminderNotesController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: "Optional notes...",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
-        ),
-
-        const SizedBox(height: 20),
-      ],
+        ],
+      ),
     );
   }
 
+  Widget _mobileReminderCard(int index) {
+    final r = _reminders[index];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with delete button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Reminder #${index + 1}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_reminders.length > 1)
+                GestureDetector(
+                  onTap: () => _removeReminder(index),
+                  child: const Icon(Icons.close, size: 20),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Title
+          const Text("Title", style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: r.titleController,
+            decoration: InputDecoration(
+              hintText: "e.g. Follow up payment",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Due date
+          Row(
+            children: [
+              const Text(
+                "Due Date",
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () async {
+                  final picked = await _pickDate(r.dueDate);
+                  if (picked != null) {
+                    setState(() => r.dueDate = picked);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formatDate(r.dueDate),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Notes
+          const Text("Notes", style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: r.notesController,
+            maxLines: 2,
+            decoration: InputDecoration(
+              hintText: "Optional notes...",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================
+  // DESKTOP
+  // =========================================================
   Widget _buildDesktopCreateInvoice(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1047,31 +1216,40 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Container(
       width: 320,
       padding: const EdgeInsets.all(20),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildCustomerSelector(),
-            const SizedBox(height: 16),
-            _buildVehicleSelector(),
-            const SizedBox(height: 16),
-            _buildInvoiceDatesSelector(),
-            const SizedBox(height: 16),
-            const Divider(color: Colors.grey),
-            const SizedBox(height: 16),
-            _buildAddItemButton(),
-            const SizedBox(height: 16),
-            const Divider(color: Colors.grey),
-            const SizedBox(height: 16),
-            _buildAdvanceSection(),
-            const SizedBox(height: 20),
-            _buildDiscountSection(),
-            const SizedBox(height: 25),
-            _buildReminderSection(),
-          ],
-        ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 16),
+          ScrollConfiguration(
+            behavior: const ScrollBehavior().copyWith(scrollbars: false),
+            child: Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCustomerSelector(),
+                    const SizedBox(height: 16),
+                    _buildVehicleSelector(),
+                    const SizedBox(height: 16),
+                    _buildInvoiceDatesSelector(),
+                    const SizedBox(height: 16),
+                    const Divider(color: Colors.grey),
+                    const SizedBox(height: 16),
+                    _buildAddItemButton(),
+                    const SizedBox(height: 16),
+                    const Divider(color: Colors.grey),
+                    const SizedBox(height: 16),
+                    _buildAdvanceSection(),
+                    const SizedBox(height: 20),
+                    _buildDiscountSection(),
+                    const SizedBox(height: 25),
+                    _buildReminderSection(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1096,7 +1274,41 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Customer *', style: TextStyle(fontWeight: FontWeight.w500)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Customer *',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return const AddCustomerDialog();
+                  },
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    "Add New Customer",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         AppSelector<Customer>(
           key: ValueKey('customer_$_customerSelectorVersion'),
@@ -1121,7 +1333,41 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Vehicle', style: TextStyle(fontWeight: FontWeight.w500)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Vehicle',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return const AddVehicleDialog();
+                  },
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    "Add New Vehicle",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         if (selectedCustomer != null)
           AppSelector<Vehicle>(
@@ -1254,36 +1500,48 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           style: TextStyle(fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
-        AppTextField(
-          hintText: 'Enter advance amount',
-          controller: _advanceController,
-          keyboardType: TextInputType.number,
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.black26),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedPaymentMethod,
-              isExpanded: true,
-              items: _paymentMethods
-                  .map(
-                    (m) => DropdownMenuItem(
-                      value: m,
-                      child: Text(m, style: const TextStyle(fontSize: 14)),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _selectedPaymentMethod = v);
-              },
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: AppTextField(
+                hintText: 'Enter advance amount',
+                controller: _advanceController,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedPaymentMethod,
+                    isExpanded: true,
+                    items: _paymentMethods
+                        .map(
+                          (m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(
+                              m,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedPaymentMethod = v);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1379,6 +1637,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     );
   }
 
+  // =========================================================
+  // DESKTOP REMINDER SECTION – MULTIPLE REMINDERS
+  // =========================================================
   Widget _buildReminderSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1387,81 +1648,153 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         const SizedBox(height: 10),
 
         const Text(
-          "Add Reminder",
+          "Reminders",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
-
         const SizedBox(height: 12),
-        _reminderTitleField(),
-        const SizedBox(height: 16),
-        _reminderDatePicker(),
-        const SizedBox(height: 12),
-        _reminderNotesField(),
-      ],
-    );
-  }
 
-  Widget _reminderTitleField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Reminder Title',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
+        // List of reminders
+        ...List.generate(_reminders.length, (i) {
+          return _desktopReminderCard(i);
+        }),
+
+        // Add reminder button
         const SizedBox(height: 8),
-        TextField(
-          controller: _reminderTitleController,
-          decoration: InputDecoration(
-            hintText: 'e.g. Follow up payment',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _reminderDatePicker() {
-    return Row(
-      children: [
-        const Text('Due Date', style: TextStyle(fontWeight: FontWeight.w500)),
-        const Spacer(),
-        TextButton.icon(
-          style: TextButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _addEmptyReminder,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.black),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text("Add Reminder"),
           ),
-          icon: const Icon(Icons.calendar_today, size: 18),
-          label: Text(
-            "${_reminderDueDate.day.toString().padLeft(2, '0')}-"
-            "${_reminderDueDate.month.toString().padLeft(2, '0')}-"
-            "${_reminderDueDate.year}",
-          ),
-          onPressed: _pickDueDate,
         ),
       ],
     );
   }
 
-  Widget _reminderNotesField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Notes (optional)',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _reminderNotesController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: 'Any additional notes...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+  Widget _desktopReminderCard(int index) {
+    final r = _reminders[index];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with delete
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Reminder #${index + 1}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_reminders.length > 1)
+                GestureDetector(
+                  onTap: () => _removeReminder(index),
+                  child: const Icon(Icons.close, size: 18),
+                ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+
+          // Title
+          const Text(
+            'Title',
+            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          AppTextField(
+            controller: r.titleController,
+            hintText: 'e.g. Follow up payment',
+          ),
+          // TextField(
+          //   controller: r.titleController,
+          //   decoration: InputDecoration(
+          //     hintText: 'e.g. Follow up payment',
+          //     border: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(6),
+          //     ),
+          //     contentPadding: const EdgeInsets.symmetric(
+          //       horizontal: 10,
+          //       vertical: 8,
+          //     ),
+          //     isDense: true,
+          //   ),
+          // ),
+          const SizedBox(height: 20),
+
+          // Due date
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Due Date',
+                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+              ),
+
+              InkWell(
+                onTap: () async {
+                  final picked = await _pickDate(r.dueDate);
+                  if (picked != null) {
+                    setState(() => r.dueDate = picked);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formatDate(r.dueDate),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Notes',
+            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          AppTextField(
+            controller: r.notesController,
+            hintText: 'Enter notes',
+            maxLines: 2,
+          ),
+        ],
+      ),
     );
   }
 
