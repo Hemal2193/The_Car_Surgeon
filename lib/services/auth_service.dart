@@ -55,7 +55,7 @@ class AuthService {
   /// ---------------- RESET PASSWORD ----------------
   static Future<void> resetPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      await _supabase.auth.resetPasswordForEmail(email.trim());
     } on AuthException {
       rethrow;
     } catch (e) {

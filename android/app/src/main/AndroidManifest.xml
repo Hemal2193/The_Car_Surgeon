@@ -3,7 +3,7 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="tcs"
+        android:label="The Car Surgeon"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

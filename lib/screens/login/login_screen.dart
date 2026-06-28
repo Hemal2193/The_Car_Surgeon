@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcs/screens/homepage.dart';
 import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/utils/responsive.dart';
+import 'package:tcs/widgets/app_titlebar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,17 +155,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 48 : 24,
-              vertical: 32,
+      body: isDesktop
+          ? Column(
+              children: [
+                const AppTitleBar(),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 48,
+                        vertical: 32,
+                      ),
+                      child: _buildDesktopLayout(),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
+                  child: _buildMobileLayout(),
+                ),
+              ),
             ),
-            child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-          ),
-        ),
-      ),
     );
   }
 
@@ -198,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           child: _buildContent(),
         ),
       ),
@@ -209,6 +228,17 @@ class _LoginScreenState extends State<LoginScreen> {
   // MOBILE LAYOUT
   // ===========================================================================
   Widget _buildMobileLayout() {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.white,
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light, // For iOS
+      ),
+    );
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -453,8 +483,9 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
             const SizedBox(width: 4),
-            GestureDetector(
+            InkWell(
               onTap: _toggleMode,
+              mouseCursor: SystemMouseCursors.click,
               child: Text(
                 _isSignUp ? 'Login' : 'Sign Up',
                 style: TextStyle(
@@ -531,6 +562,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: InkWell(
           onTap: _isLoading ? null : _submit,
           borderRadius: BorderRadius.circular(12),
+          mouseCursor: SystemMouseCursors.click,
           hoverColor: Colors.grey.shade50,
           splashColor: Colors.grey.shade200,
           child: Container(

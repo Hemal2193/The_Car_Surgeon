@@ -7,6 +7,7 @@ import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/services/invoice_pdf_preview.dart';
 import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
+import 'package:tcs/widgets/app_popup_menu.dart';
 
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/payment_collection_dialog.dart';
@@ -456,6 +457,91 @@ Widget _buildMobileInvoicePreview(
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              actions: [
+                AppPopupMenu(
+                  options: [
+                    //edit
+                    AppPopupMenuOption(
+                      icon: Icons.mode_edit_outline_outlined,
+                      label: "Edit",
+                      onTap: () {
+                        Get.to(() => CreateInvoiceScreen(invoice: invoice));
+                      },
+                    ),
+                    //Collect payment
+                    AppPopupMenuOption(
+                      label: "Collect Payment",
+                      icon: Icons.payments_outlined,
+                      onTap: () {
+                        PaymentCollectionDialog.show(
+                          context: context,
+                          initialInvoice: invoice,
+                        );
+                      },
+                    ),
+
+                    //Download PDF
+                    AppPopupMenuOption(
+                      icon: Icons.sim_card_download_outlined,
+                      label: "Download PDF",
+                      onTap: () async {
+                        try {
+                          final path =
+                              await InvoicePdfService.downloadInvoicePdfMobile(
+                                invoice,
+                              );
+                          if (path != null) {
+                            Get.snackbar(
+                              margin: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 20,
+                              ),
+                              "Downloaded",
+                              "Invoice saved to Downloads/TCS/${invoice.invoiceId}.pdf",
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                          }
+                        } catch (e) {
+                          Get.snackbar(
+                            "Error",
+                            "Failed to download PDF: $e",
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        }
+                      },
+                    ),
+
+                    //Share PDF
+                    AppPopupMenuOption(
+                      icon: Icons.share_outlined,
+                      label: "Share PDF",
+                      onTap: () async {
+                        try {
+                          await InvoicePdfService.shareInvoicePdf(
+                            invoice,
+                            isMobile: true,
+                          );
+                        } catch (e) {
+                          Get.snackbar(
+                            "Error",
+                            "Failed to share PDF: $e",
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        }
+                      },
+                    ),
+
+                    //Send Payment Reminder
+                    AppPopupMenuOption(
+                      icon: Icons.notifications_outlined,
+                      label: "Send Payment Reminder",
+                      onTap: () {
+                        WhatsappShare.invoicePaymentReminder(invoice.invoiceId);
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
 
             body: Obx(
@@ -498,7 +584,6 @@ Widget _buildMobileInvoicePreview(
                     _paymentHistoryCard(invoice),
 
                     const SizedBox(height: 15),
-
                     _financialSummaryCard(
                       subtotal,
                       totalTax,
@@ -511,7 +596,7 @@ Widget _buildMobileInvoicePreview(
 
                     const SizedBox(height: 15),
 
-                    _actionButtons(context, invoice),
+                    // _actionButtons(context, invoice),
                   ],
                 ),
               ),

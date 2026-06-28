@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tcs/models/invoice_payment_status.dart';
+import 'package:tcs/screens/login/login_screen.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/payments/mobile_payment_history_screen.dart';
+import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
@@ -153,6 +155,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           statusBarColor: Colors.white, // background
           statusBarIconBrightness: Brightness.dark, // Android icons
           statusBarBrightness: Brightness.light, // iOS icons
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
         ),
       );
     }
@@ -267,9 +271,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Dashboard",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Dashboard",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                ),
+                InkWell(
+                  onTap: () {
+                    AuthService.logout();
+                    Get.offAll(LoginScreen());
+                  },
+                  child: Icon(Icons.logout),
+                ),
+              ],
             ),
 
             const SizedBox(height: 12),
@@ -739,6 +755,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: TextField(
             controller: _searchController,
             focusNode: _searchFocusNode,
+            onTapOutside: (event) {
+              _searchFocusNode.unfocus();
+            },
             onChanged: _performSearch,
             decoration: InputDecoration(
               hintText: 'Search customers, vehicles, invoices...',

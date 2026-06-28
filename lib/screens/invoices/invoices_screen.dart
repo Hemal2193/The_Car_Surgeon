@@ -465,6 +465,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   );
                 },
               ),
+              AppPopupMenuOption(
+                icon: Icons.share_outlined,
+                label: "Send Payment Reminder",
+                onTap: () {
+                  WhatsappShare.invoicePaymentReminder(inv.invoiceId);
+                },
+              ),
             ],
           ),
         ],

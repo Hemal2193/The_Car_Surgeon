@@ -513,16 +513,25 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 12, top: 10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Get.back(),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Get.back(),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isEditing ? "Edit Invoice" : "Create Invoice",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            isEditing ? "Edit Invoice" : "Create Invoice",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          cButton(saveInvoice, isEditing ? "Update" : "Save", true),
         ],
       ),
     );
@@ -1024,7 +1033,6 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           const SizedBox(height: 12),
           _mobileBottomBar(),
           const SizedBox(height: 12),
-          cButton(saveInvoice, isEditing ? "Update" : "Save", true),
         ],
       ),
     );

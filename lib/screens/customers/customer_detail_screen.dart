@@ -6,6 +6,7 @@ import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
 import 'package:tcs/screens/vehicles/vehicle_detail_screen.dart';
+import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/custom_button.dart';
@@ -460,6 +461,16 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                                       );
                                                     },
                                                   ),
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.share_outlined,
+                                                    label:
+                                                        "Send Payment Reminder",
+                                                    onTap: () {
+                                                      WhatsappShare.invoicePaymentReminder(
+                                                        invoice.invoiceId,
+                                                      );
+                                                    },
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -864,6 +875,15 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                   },
                                 );
                               },
+                            );
+                          },
+                        ),
+                        AppPopupMenuOption(
+                          icon: Icons.share_outlined,
+                          label: "Send Payment Reminder",
+                          onTap: () {
+                            WhatsappShare.invoicePaymentReminder(
+                              invoice.invoiceId,
                             );
                           },
                         ),

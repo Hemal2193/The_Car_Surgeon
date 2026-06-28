@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:tcs/screens/login/login_screen.dart';
+import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/utils/app_pages.dart';
 
 class AppSidebar extends StatelessWidget {
@@ -86,7 +89,46 @@ class AppSidebar extends StatelessWidget {
             icon: Icons.inventory_2_outlined,
             page: AppPage.items,
           ),
+
+          const Spacer(),
+
+          const Divider(color: Colors.white24, height: 1, thickness: 1),
+
+          _buildLogoutButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return InkWell(
+      mouseCursor: SystemMouseCursors.click,
+      onTap: () async {
+        await AuthService.logout();
+        Get.offAll(() => const LoginScreen());
+      },
+      child: Container(
+        height: 40,
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.white70),
+            SizedBox(width: 12),
+            Text(
+              'Logout',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -99,6 +141,7 @@ class AppSidebar extends StatelessWidget {
     bool isSelected = currentPage == page;
 
     return InkWell(
+      mouseCursor: SystemMouseCursors.click,
       onTap: () {
         onPageSelected(page);
       },

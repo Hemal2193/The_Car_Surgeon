@@ -4,6 +4,7 @@ import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
+import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
@@ -233,8 +234,8 @@ class VehicleDetailScreen extends StatelessWidget {
                                     const SizedBox(width: 15),
                                     Expanded(
                                       child: _infoTile(
-                                        "Customer",
-                                        customer?.name ?? "-",
+                                        "Odometer",
+                                        "${vehicle.odoMeter} Km",
                                       ),
                                     ),
                                   ],
@@ -431,6 +432,16 @@ class VehicleDetailScreen extends StatelessWidget {
                                                                 );
                                                           },
                                                         ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  AppPopupMenuOption(
+                                                    icon: Icons.share_outlined,
+                                                    label:
+                                                        "Send Payment Reminder",
+                                                    onTap: () {
+                                                      WhatsappShare.invoicePaymentReminder(
+                                                        invoice.invoiceId,
                                                       );
                                                     },
                                                   ),
@@ -865,6 +876,15 @@ class VehicleDetailScreen extends StatelessWidget {
                                   },
                                 );
                               },
+                            );
+                          },
+                        ),
+                        AppPopupMenuOption(
+                          icon: Icons.share_outlined,
+                          label: "Send Payment Reminder",
+                          onTap: () {
+                            WhatsappShare.invoicePaymentReminder(
+                              invoice.invoiceId,
                             );
                           },
                         ),

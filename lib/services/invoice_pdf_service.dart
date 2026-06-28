@@ -263,22 +263,38 @@ class InvoicePdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(
-            "The Car Surgeon",
-            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Row(
+                children: [
+                  pw.Text("TAX INVOICE"),
+                  pw.SizedBox(width: 7),
+                  pw.Container(
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey),
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.all(4),
+                      child: pw.Text(
+                        "ORIGINAL FOR RECIPENT",
+                        style: pw.TextStyle(fontSize: 8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              pw.Text('A Multibrand Car & Bike Workshop'),
+            ],
           ),
-          pw.Text(
-            "Laxmipura, Vadodara, Gujarat 390021",
-            style: pw.TextStyle(color: PdfColors.grey900, fontSize: 12),
-          ),
-          pw.SizedBox(height: 10),
-
+          pw.SizedBox(height: 5),
           //Section 1
           pw.Container(
             width: double.infinity,
             height: 100,
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey),
+              border: pw.Border.all(color: PdfColors.black),
               borderRadius: pw.BorderRadius.circular(4),
             ),
             child: pw.Padding(
@@ -311,6 +327,21 @@ class InvoicePdfService {
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
+                          pw.Text(
+                            "The Car Surgeon",
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Text(
+                            "Laxmipura, Vadodara, Gujarat 390021",
+                            style: pw.TextStyle(
+                              color: PdfColors.grey900,
+                              fontSize: 9,
+                            ),
+                          ),
+                          pw.SizedBox(height: 3),
                           pw.Row(
                             children: [
                               // GSTIN Block
@@ -589,7 +620,7 @@ class InvoicePdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey),
+        border: pw.Border.all(color: PdfColors.black),
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Row(
@@ -664,16 +695,21 @@ class InvoicePdfService {
       (sum, item) => sum + item.taxAmount,
     );
 
+    final totalDiscountPerItem = invoice.items.fold<double>(
+      0,
+      (sum, item) => sum + item.discountAmount,
+    );
+
     final totalAmount = invoice.items.fold<double>(
       0,
       (sum, item) => sum + item.totalAmount,
     );
 
     // Rows that get grey background: Discount, Advance, Total, Balance
-    final int discountRowIndex = invoice.items.length + 1;
-    final int advanceRowIndex = invoice.items.length + 2;
-    final int totalRowIndex = invoice.items.length + 3;
-    final int balanceRowIndex = invoice.items.length + 4;
+    // final int discountRowIndex = invoice.items.length + 1;
+    // final int advanceRowIndex = invoice.items.length + 2;
+    // final int totalRowIndex = invoice.items.length + 3;
+    // final int balanceRowIndex = invoice.items.length + 4;
 
     return pw.Container(
       decoration: pw.BoxDecoration(
@@ -697,6 +733,7 @@ class InvoicePdfService {
             "Rate",
             "GST %",
             "Tax",
+            "Discount",
             "Amount",
           ],
 
@@ -713,55 +750,60 @@ class InvoicePdfService {
                 item.rate.toStringAsFixed(2),
                 "${item.taxPercent.toStringAsFixed(0)}%",
                 item.taxAmount.toStringAsFixed(2),
+                item.discount.toStringAsFixed(2),
                 item.totalAmount.toStringAsFixed(2),
               ];
             }),
 
+            // Total row
+            [
+              "",
+              "Total",
+              "-",
+              totalQty.toStringAsFixed(0),
+              totalRate.toStringAsFixed(2),
+              "-",
+              totalTax.toStringAsFixed(2),
+              totalDiscountPerItem.toStringAsFixed(2),
+              totalAmount.toStringAsFixed(2),
+            ],
+
             // Discount row
             [
               "",
-              "",
-              "",
-              "",
-              "",
-              "",
               "Discount",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
               invoice.discount.toStringAsFixed(2),
             ],
 
             // Advance row
             [
               "",
-              "",
-              "",
-              "",
-              "",
-              "",
               "Advance",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
               invoice.advanceAmount.toStringAsFixed(2),
-            ],
-
-            // Total row
-            [
-              "",
-              "Total",
-              "",
-              totalQty.toStringAsFixed(0),
-              totalRate.toStringAsFixed(2),
-              "",
-              totalTax.toStringAsFixed(2),
-              totalAmount.toStringAsFixed(2),
             ],
 
             // Balance row
             [
               "",
-              "",
-              "",
-              "",
-              "",
-              "",
               "Balance",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
               invoice.balanceAmount.toStringAsFixed(2),
             ],
           ],
@@ -908,11 +950,11 @@ class InvoicePdfService {
     final amountInWords = NumberToWords.convert(
       'en',
       invoice.grandTotal.toInt(),
-    );
+    ).capitalize;
     return pw.Container(
       width: double.infinity,
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey),
+        border: pw.Border.all(color: PdfColors.black),
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Padding(
@@ -922,7 +964,7 @@ class InvoicePdfService {
           children: [
             pw.Text("Amount in Words"),
             pw.Text(
-              amountInWords,
+              amountInWords!,
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             ),
           ],
@@ -939,7 +981,7 @@ class InvoicePdfService {
 
     return pw.Container(
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey),
+        border: pw.Border.all(color: PdfColors.black),
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Padding(
@@ -1004,7 +1046,7 @@ class InvoicePdfService {
   static pw.Widget _buildSignature() {
     return pw.Container(
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey),
+        border: pw.Border.all(color: PdfColors.black),
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Center(

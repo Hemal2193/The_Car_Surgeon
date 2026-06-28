@@ -23,10 +23,7 @@ import 'custom_button.dart';
 class PaymentCollectionDialog extends StatefulWidget {
   final Invoice? initialInvoice;
 
-  const PaymentCollectionDialog({
-    super.key,
-    this.initialInvoice,
-  });
+  const PaymentCollectionDialog({super.key, this.initialInvoice});
 
   /// Convenience method to show the dialog.
   static Future<void> show({
@@ -35,9 +32,7 @@ class PaymentCollectionDialog extends StatefulWidget {
   }) {
     return showDialog(
       context: context,
-      builder: (_) => PaymentCollectionDialog(
-        initialInvoice: initialInvoice,
-      ),
+      builder: (_) => PaymentCollectionDialog(initialInvoice: initialInvoice),
     );
   }
 
@@ -94,13 +89,15 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
       final customer = customerCtrl.getCustomerById(inv.customerId);
       final vehicle = vehicleCtrl.getVehicleById(inv.vehicleId);
 
-      results.add(_SearchResult(
-        invoice: inv,
-        customerName: customer?.name ?? 'Unknown',
-        registrationNumber: vehicle?.registrationNumber ?? 'Unknown',
-        phone: customer?.contact1 ?? '',
-        invoiceId: inv.invoiceId,
-      ));
+      results.add(
+        _SearchResult(
+          invoice: inv,
+          customerName: customer?.name ?? 'Unknown',
+          registrationNumber: vehicle?.registrationNumber ?? 'Unknown',
+          phone: customer?.contact1 ?? '',
+          invoiceId: inv.invoiceId,
+        ),
+      );
     }
 
     _allResults = results;
@@ -156,9 +153,7 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
         horizontal: isDesktop ? 24 : 16,
         vertical: 24,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: isDesktop ? 500 : double.infinity,
@@ -200,8 +195,7 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                   // ==========================================================
                   if (widget.initialInvoice == null) ...[
                     AppTextField(
-                      hintText:
-                          "Search by Name, Invoice ID, Reg No, Phone...",
+                      hintText: "Search by Name, Invoice ID, Reg No, Phone...",
                       controller: searchController,
                       onChanged: _onSearchChanged,
                     ),
@@ -280,8 +274,9 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                                             color: r.invoice.balanceAmount > 0
                                                 ? Colors.black
                                                 : Colors.green,
-                                            borderRadius:
-                                                BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Text(
                                             balanceText,
@@ -313,10 +308,10 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                         ),
                       ),
 
-                    const SizedBox(height: 12),
+                    // const SizedBox(height: 12),
 
                     // Show a divider when no invoice selected yet
-                    if (!hasInvoice) const Divider(),
+                    // if (!hasInvoice) const Divider(),
                   ],
 
                   // ==========================================================
@@ -400,10 +395,7 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                               value: 'Cash',
                               child: Text('Cash'),
                             ),
-                            DropdownMenuItem(
-                              value: 'UPI',
-                              child: Text('UPI'),
-                            ),
+                            DropdownMenuItem(value: 'UPI', child: Text('UPI')),
                             DropdownMenuItem(
                               value: 'Bank Transfer',
                               child: Text('Bank Transfer'),
@@ -447,8 +439,9 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                         final picked = await showDatePicker(
                           context: context,
                           initialDate: paymentDate,
-                          firstDate:
-                              DateTime.now().subtract(const Duration(days: 30)),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 30),
+                          ),
                           lastDate: DateTime.now(),
                         );
 
@@ -588,35 +581,24 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
           ),
           const SizedBox(height: 6),
 
-          Text(
-            "Grand Total: ₹${invoice.grandTotal.toStringAsFixed(2)}",
-          ),
+          Text("Grand Total: ₹${invoice.grandTotal.toStringAsFixed(2)}"),
 
           const SizedBox(height: 4),
 
-          Text(
-            "Advance: ₹${invoice.advanceAmount.toStringAsFixed(2)}",
-          ),
+          Text("Advance: ₹${invoice.advanceAmount.toStringAsFixed(2)}"),
 
           const SizedBox(height: 4),
 
-          Text(
-            "Discount: ₹${invoice.discount.toStringAsFixed(2)}",
-          ),
+          Text("Discount: ₹${invoice.discount.toStringAsFixed(2)}"),
           const SizedBox(height: 4),
 
-          Text(
-            "Collected: ₹${totalCollected.toStringAsFixed(2)}",
-          ),
+          Text("Collected: ₹${totalCollected.toStringAsFixed(2)}"),
 
           const Divider(height: 20),
 
           Text(
             "Balance: ₹${(invoice.balanceAmount).toStringAsFixed(2)}",
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ],
       ),
