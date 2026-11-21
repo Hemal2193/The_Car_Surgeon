@@ -141,7 +141,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
     }
 
     if (mounted) {
-      Navigator.pop(context);
+      Navigator.pop(context, customer);
     }
   }
 

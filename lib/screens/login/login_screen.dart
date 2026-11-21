@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tcs/screens/homepage.dart';
+import 'package:tcs/routes/app_routes.dart';
 import 'package:tcs/services/auth_service.dart';
+import 'package:tcs/services/supabase_sync_service.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 
@@ -49,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateToDashboard() {
-    Get.offAll(() => const HomePage());
+    AppRoutes.offAll(AppRoutes.home);
   }
 
   Future<void> _startApprovalListener(String userId) async {
@@ -68,6 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLoginSuccess(User user) async {
     await AuthService.ensureUserRow(user);
     final isApproved = await AuthService.getUserApprovalStatus(user.id);
+
+    // Trigger sync after successful login so data is fetched
+    try {
+      await Get.find<SupabaseSyncService>().syncAfterLogin();
+    } catch (e) {
+      debugPrint("Post-login sync error: $e");
+    }
 
     if (isApproved) {
       if (mounted) {

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import 'package:tcs/screens/login/login_screen.dart';
-import 'package:tcs/screens/homepage.dart';
+import 'package:tcs/routes/app_routes.dart';
 import 'package:tcs/services/app_initializer.dart';
 import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/utils/platform_utils.dart';
@@ -134,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateRoute() async {
     if (!AuthService.isLoggedIn) {
-      Get.offAll(() => const LoginScreen());
+      AppRoutes.offAll(AppRoutes.login);
       return;
     }
 
@@ -145,9 +143,9 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (approved) {
-      Get.offAll(() => const HomePage());
+      AppRoutes.offAll(AppRoutes.home);
     } else {
-      Get.offAll(() => const LoginScreen());
+      AppRoutes.offAll(AppRoutes.login);
     }
   }
 

@@ -87,6 +87,27 @@ class IdGenerator {
     return 'INV-${currentNumber.toString().padLeft(4, '0')}';
   }
 
+  /// Seeds the quotation counter so the next ID continues from [maxValue].
+  static void setInitialQuotationId(int maxValue) {
+    final settingsBox = Hive.box(HiveBoxes.settings);
+    final existing = settingsBox.get('quotation_counter', defaultValue: 0);
+    if (maxValue > existing) {
+      settingsBox.put('quotation_counter', maxValue);
+    }
+  }
+
+  static String generateQuotationId() {
+    final settingsBox = Hive.box(HiveBoxes.settings);
+
+    int currentNumber = settingsBox.get('quotation_counter', defaultValue: 0);
+
+    currentNumber++;
+
+    settingsBox.put('quotation_counter', currentNumber);
+
+    return 'QUO-${currentNumber.toString().padLeft(4, '0')}';
+  }
+
   /// Seeds the reminder counter so the next ID continues from [maxValue].
   static void setInitialReminderId(int maxValue) {
     final settingsBox = Hive.box(HiveBoxes.settings);

@@ -20,6 +20,7 @@ import 'package:printing/printing.dart';
 import 'package:tcs/models/customer_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:win32/win32.dart';
+import '../utils/billing_document_type.dart';
 import '../models/invoice_model.dart';
 
 class InvoicePdfService {
@@ -94,7 +95,7 @@ class InvoicePdfService {
           ),
         ],
 
-        footer: (context) => _buildFooter(),
+        footer: (context) => _buildFooter(invoice),
       ),
     );
 
@@ -268,21 +269,24 @@ class InvoicePdfService {
             children: [
               pw.Row(
                 children: [
-                  pw.Text("TAX INVOICE"),
+                  pw.Text(
+                    BillingDocumentType.getDocumentTitle(invoice.invoiceId),
+                  ),
                   pw.SizedBox(width: 7),
-                  pw.Container(
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Padding(
-                      padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text(
-                        "ORIGINAL FOR RECIPENT",
-                        style: pw.TextStyle(fontSize: 8),
+                  if (BillingDocumentType.isInvoice(invoice.invoiceId))
+                    pw.Container(
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(color: PdfColors.grey),
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text(
+                          "ORIGINAL FOR RECIPENT",
+                          style: pw.TextStyle(fontSize: 8),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               pw.Text('A Multibrand Car & Bike Workshop'),
@@ -1068,12 +1072,29 @@ class InvoicePdfService {
   // =====================================================
   // FOOTER
   // =====================================================
-  static pw.Widget _buildFooter() {
-    return pw.Center(
-      child: pw.Text(
-        "Thank you for choosing The Car Surgeon",
-        style: const pw.TextStyle(fontSize: 10),
-      ),
+  static pw.Widget _buildFooter(Invoice invoice) {
+    final isQuotation = BillingDocumentType.isQuotation(invoice.invoiceId);
+    return pw.Column(
+      children: [
+        if (isQuotation)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 4),
+            child: pw.Text(
+              "This is a quotation and not a final tax invoice.",
+              style: pw.TextStyle(
+                fontSize: 8,
+                color: PdfColors.grey700,
+                fontStyle: pw.FontStyle.italic,
+              ),
+            ),
+          ),
+        pw.Center(
+          child: pw.Text(
+            "Thank you for choosing The Car Surgeon",
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ),
+      ],
     );
   }
 }

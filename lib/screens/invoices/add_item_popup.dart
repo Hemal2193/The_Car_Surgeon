@@ -253,14 +253,18 @@ class _AddItemPopupState extends State<AddItemPopup> {
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       InkWell(
-                        onTap: () {
+                        onTap: () async {
                           if (isDesktop) {
-                            showDialog(
+                            final item = await showDialog<Item>(
                               context: context,
                               builder: (_) => const AddItemDialog(),
                             );
+                            if (item != null) {
+                              Get.find<ItemController>().update();
+                              _onItemSelected(item);
+                            }
                           } else {
-                            showModalBottomSheet(
+                            final item = await showModalBottomSheet<Item>(
                               context: context,
                               isScrollControlled: true,
                               isDismissible: true,
@@ -280,6 +284,10 @@ class _AddItemPopupState extends State<AddItemPopup> {
                                 );
                               },
                             );
+                            if (item != null) {
+                              Get.find<ItemController>().update();
+                              _onItemSelected(item);
+                            }
                           }
                         },
                         child: Container(

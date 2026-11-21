@@ -83,19 +83,25 @@ class AuthService {
     try {
       final existing = await _supabase
           .from('users')
-          .select('id')
-          .eq('id', user.id)
+          .select('user_id')
+          .eq('user_id', user.id)
           .maybeSingle();
 
       if (existing == null) {
         await _supabase.from('users').insert({
-          'id': user.id,
+          'user_id': user.id,
           'email': user.email,
           'is_approved': false,
         });
       }
+    } on PostgrestException catch (e) {
+      // Ignore duplicate insert if two requests race each other
+      if (e.code != '23505') {
+        rethrow;
+      }
     } catch (e) {
       debugPrint('Ensure user row error: $e');
+      rethrow;
     }
   }
 
@@ -105,7 +111,7 @@ class AuthService {
       final response = await _supabase
           .from('users')
           .select('is_approved')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .maybeSingle();
 
       return response != null && response['is_approved'] == true;
@@ -127,7 +133,7 @@ class AuthService {
           schema: 'public',
           table: 'users',
           filter: PostgresChangeFilter(
-            column: 'id',
+            column: 'user_id',
             value: userId,
             type: PostgresChangeFilterType.eq,
           ),

@@ -520,7 +520,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
     }
 
     if (mounted) {
-      Navigator.pop(context);
+      Navigator.pop(context, vehicle);
     }
   }
 }

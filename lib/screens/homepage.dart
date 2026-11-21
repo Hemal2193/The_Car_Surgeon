@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tcs/controllers/app_navigation_controller.dart';
+import 'package:tcs/controllers/invoice_controller.dart';
 import 'package:tcs/screens/customers/add_customer_dialog.dart';
 import 'package:tcs/screens/customers/customers_screen.dart';
 import 'package:tcs/screens/dashboard/dashboard_screen.dart';
@@ -9,6 +10,7 @@ import 'package:tcs/screens/invoices/invoices_screen.dart';
 import 'package:tcs/screens/payments/payments_screen.dart';
 import 'package:tcs/screens/items/add_item_dialog.dart';
 import 'package:tcs/screens/items/items_screen.dart';
+import 'package:tcs/screens/reminders/desktop_reminders_screen.dart';
 import 'package:tcs/screens/vehicles/add_vehicle_dialog.dart';
 import 'package:tcs/screens/vehicles/vehicles_screen.dart';
 import 'package:tcs/utils/app_pages.dart';
@@ -26,157 +28,143 @@ class HomePage extends StatelessWidget {
     switch (currentPage) {
       case AppPage.dashboard:
         return const DashboardScreen();
-
       case AppPage.customers:
         return const CustomersScreen();
-
       case AppPage.vehicles:
         return const VehiclesScreen();
-
       case AppPage.invoices:
         return const InvoicesScreen();
-
       case AppPage.payments:
         return const PaymentsScreen();
-
       case AppPage.items:
         return const ItemsScreen();
+      case AppPage.reminders:
+        return const DesktopRemindersScreen();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final currentPage = navigationController.currentPage.value;
+    return GetBuilder<AppNavigationController>(
+      builder: (navCtrl) {
+        final currentPage = navCtrl.currentPage.value;
 
-      if (Responsive.isDesktop(context)) {
-        return Scaffold(
-          body: Row(
-            children: [
-              AppSidebar(
-                currentPage: currentPage,
-                onPageSelected: navigationController.selectPage,
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    const AppTitleBar(),
-                    Expanded(
-                      child: Container(
-                        color: Colors.white,
-                        child: getCurrentScreen(currentPage),
+        if (Responsive.isDesktop(context)) {
+          return Scaffold(
+            body: Row(
+              children: [
+                AppSidebar(
+                  currentPage: currentPage,
+                  onPageSelected: navigationController.selectPage,
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      const AppTitleBar(),
+                      Expanded(
+                        child: Container(
+                          color: Colors.white,
+                          child: getCurrentScreen(currentPage),
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          floatingActionButton: _buildCurrentFab(context, currentPage),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: SafeArea(
+                  bottom: false,
+                  child: getCurrentScreen(currentPage),
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
+                child: Container(
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Row(
+                      children: [
+                        _navItem(
+                          currentPage: currentPage,
+                          page: AppPage.dashboard,
+                          icon: Icons.dashboard_outlined,
+                          selectedIcon: Icons.dashboard,
+                          label: 'Dashboard',
+                        ),
+                        _navItem(
+                          currentPage: currentPage,
+                          page: AppPage.customers,
+                          icon: Icons.people_outline,
+                          selectedIcon: Icons.people,
+                          label: 'Customers',
+                        ),
+                        _navItem(
+                          currentPage: currentPage,
+                          page: AppPage.vehicles,
+                          icon: Icons.directions_car_outlined,
+                          selectedIcon: Icons.directions_car,
+                          label: 'Vehicles',
+                        ),
+                        _navItem(
+                          currentPage: currentPage,
+                          page: AppPage.invoices,
+                          icon: Icons.receipt_long_outlined,
+                          selectedIcon: Icons.receipt_long,
+                          label: 'Billing',
+                        ),
+                        _navItem(
+                          currentPage: currentPage,
+                          page: AppPage.items,
+                          icon: Icons.inventory_2_outlined,
+                          selectedIcon: Icons.inventory_2,
+                          label: 'Items',
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
         );
-      }
-
-      //-------------------------------
-      //------Mobile-------------------
-      //-------------------------------
-      return Scaffold(
-        backgroundColor: Colors.white,
-
-        floatingActionButton: _buildCurrentFab(context, currentPage),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
-        body: Stack(
-          children: [
-            // Main content
-            Positioned.fill(
-              child: SafeArea(
-                bottom: false,
-                child: getCurrentScreen(currentPage),
-              ),
-            ),
-
-            // Floating navbar
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-              child: Container(
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      // ignore: deprecated_member_use
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: Row(
-                    children: [
-                      _navItem(
-                        currentPage: currentPage,
-                        page: AppPage.dashboard,
-                        icon: Icons.dashboard_outlined,
-                        selectedIcon: Icons.dashboard,
-                        label: 'Dashboard',
-                      ),
-                      _navItem(
-                        currentPage: currentPage,
-                        page: AppPage.customers,
-                        icon: Icons.people_outline,
-                        selectedIcon: Icons.people,
-                        label: 'Customers',
-                      ),
-                      _navItem(
-                        currentPage: currentPage,
-                        page: AppPage.vehicles,
-                        icon: Icons.directions_car_outlined,
-                        selectedIcon: Icons.directions_car,
-                        label: 'Vehicles',
-                      ),
-                      _navItem(
-                        currentPage: currentPage,
-                        page: AppPage.invoices,
-                        icon: Icons.receipt_long_outlined,
-                        selectedIcon: Icons.receipt_long,
-                        label: 'Invoices',
-                      ),
-                      _navItem(
-                        currentPage: currentPage,
-                        page: AppPage.items,
-                        icon: Icons.inventory_2_outlined,
-                        selectedIcon: Icons.inventory_2,
-                        label: 'Items',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+      },
+    );
   }
 
   Widget? _buildCurrentFab(BuildContext context, AppPage currentPage) {
     switch (currentPage) {
       case AppPage.customers:
         return _customerFab(context);
-
       case AppPage.vehicles:
         return _vehicleFab(context);
-
       case AppPage.invoices:
         return _invoiceFab();
-
       case AppPage.items:
         return _itemFab(context);
-
       default:
         return null;
     }
@@ -250,16 +238,18 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _invoiceFab() {
+    final isQuotation =
+        Get.find<InvoiceController>().isQuotationTabSelected.value;
     return Padding(
       padding: const EdgeInsets.only(bottom: 80),
       child: FloatingActionButton.extended(
-        label: const Text('New Invoice'),
+        label: Text(isQuotation ? 'New Quotation' : 'New Invoice'),
         icon: const Icon(Icons.add, size: 20),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         heroTag: null,
         onPressed: () {
-          Get.to(() => const CreateInvoiceScreen());
+          Get.to(() => CreateInvoiceScreen(isQuotation: isQuotation));
         },
       ),
     );
@@ -278,20 +268,9 @@ class HomePage extends StatelessWidget {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            isDismissible: true,
             backgroundColor: Colors.transparent,
-            builder: (_) {
-              return DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: 0.80,
-                minChildSize: 0.80,
-                maxChildSize: 0.92,
-                shouldCloseOnMinExtent: true,
-                builder: (context, scrollController) {
-                  return AddItemDialog(scrollController: scrollController);
-                },
-              );
-            },
+            builder: (_) =>
+                FractionallySizedBox(heightFactor: 0.9, child: AddItemDialog()),
           );
         },
       ),

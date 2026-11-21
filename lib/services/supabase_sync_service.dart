@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
 
 import '../controllers/customer_controller.dart';
 import '../controllers/vehicle_controller.dart';
@@ -10,6 +9,7 @@ import '../controllers/item_controller.dart';
 import '../controllers/invoice_controller.dart';
 import '../controllers/reminder_controller.dart';
 import '../controllers/payment_controller.dart';
+import '../services/auth_service.dart';
 
 import '../models/customer_model.dart';
 import '../models/vehicle_model.dart';
@@ -28,7 +28,8 @@ class SupabaseSyncService {
   bool _isSyncing = false;
 
   late Box _metaBox;
-  late String deviceId;
+
+  String get userId => AuthService.currentUser?.id ?? '';
 
   final Map<String, DateTime> lastSync = {
     'customers': DateTime.fromMillisecondsSinceEpoch(0),
@@ -45,19 +46,28 @@ class SupabaseSyncService {
   Future<void> init() async {
     _metaBox = await Hive.openBox('sync_meta');
 
-    deviceId = _metaBox.get('device_id') ?? const Uuid().v4();
-    await _metaBox.put('device_id', deviceId);
-
     _loadLastSyncTimes();
 
-    print("Supabase sync initialized | Device: $deviceId");
+    print("Supabase sync initialized | User: $userId");
 
     startRealtimeSync();
-    syncAll();
+
+    // Only sync immediately if user is already logged in (session restored)
+    if (AuthService.isLoggedIn) {
+      syncAll();
+    }
 
     _timer = Timer.periodic(const Duration(minutes: 10), (_) {
-      syncAll();
+      if (AuthService.isLoggedIn) {
+        syncAll();
+      }
     });
+  }
+
+  /// Call this after a successful login to sync data for the authenticated user.
+  Future<void> syncAfterLogin() async {
+    print("Sync after login triggered | User: $userId");
+    await syncAll();
   }
 
   void _loadLastSyncTimes() {
@@ -199,7 +209,7 @@ class SupabaseSyncService {
           'gst_number': c.gstNumber,
           'pan_number': c.panNumber,
           'updated_at': c.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': c.isDeleted,
         });
 
@@ -214,6 +224,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('customers')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['customers']!.toIso8601String());
 
     for (final r in remote) {
@@ -262,9 +273,11 @@ class SupabaseSyncService {
           'fuel_type': v.fuelType,
           'chassis_number': v.chassisNumber,
           'engine_number': v.engineNumber,
-          'odo_meter': v.odoMeter.toString(),
+          'odo_meter': v.odoMeter != null && v.odoMeter!.trim().isNotEmpty
+              ? int.tryParse(v.odoMeter!)
+              : null,
           'updated_at': v.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': v.isDeleted,
         });
 
@@ -277,6 +290,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('vehicles')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['vehicles']!.toIso8601String());
 
     for (final r in remote) {
@@ -323,7 +337,7 @@ class SupabaseSyncService {
           'gst': i.gst,
           'price': i.price,
           'updated_at': i.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': i.isDeleted,
         });
 
@@ -336,6 +350,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('items')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['items']!.toIso8601String());
 
     for (final r in remote) {
@@ -374,6 +389,7 @@ class SupabaseSyncService {
           'invoice_id': i.invoiceId,
           'customer_id': i.customerId,
           'vehicle_id': i.vehicleId,
+          'due_date': i.dueDate.toIso8601String(),
           'date_time': i.dateTime.toIso8601String(),
           'items': i.items
               .map(
@@ -399,7 +415,7 @@ class SupabaseSyncService {
           'payment_method': i.paymentMethod,
           'payment_status': i.paymentStatus.name,
           'updated_at': i.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': i.isDeleted,
         });
 
@@ -412,6 +428,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('invoices')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['invoices']!.toIso8601String());
 
     for (final r in remote) {
@@ -460,7 +477,7 @@ class SupabaseSyncService {
               customerId: r['customer_id']?.toString() ?? '',
               vehicleId: r['vehicle_id']?.toString() ?? '',
               dateTime: DateTime.parse(r['date_time']),
-              dueDate: DateTime.parse(r['due_date']),
+              dueDate: r['due_date'] != null ? DateTime.parse(r['due_date']) : DateTime.now(),
               items: parsedItems,
               grandTotal: (r['grand_total'] as num?)?.toDouble() ?? 0.0,
               discount: (r['discount'] as num?)?.toDouble() ?? 0.0,
@@ -548,7 +565,7 @@ class SupabaseSyncService {
           'completed': r.completed,
           'created_at': r.createdAt.toIso8601String(),
           'updated_at': r.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': r.isDeleted,
         });
 
@@ -561,6 +578,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('reminders')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['reminders']!.toIso8601String());
 
     for (final r in remote) {
@@ -613,7 +631,7 @@ class SupabaseSyncService {
           'amount': p.amount,
           'notes': p.notes,
           'updated_at': p.updatedAt.toIso8601String(),
-          'device_id': deviceId,
+          'user_id': userId,
           'is_deleted': p.isDeleted,
         });
 
@@ -627,6 +645,7 @@ class SupabaseSyncService {
     final remote = await supabase
         .from('payments')
         .select()
+        .eq('user_id', userId)
         .gte('updated_at', lastSync['payments']!.toIso8601String());
 
     for (final r in remote) {

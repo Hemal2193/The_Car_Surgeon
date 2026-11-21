@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:tcs/screens/login/login_screen.dart';
+import 'package:tcs/routes/app_routes.dart';
 import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/utils/app_pages.dart';
+import 'package:tcs/widgets/logout_confirmation_dialog.dart';
 
 class AppSidebar extends StatelessWidget {
   final AppPage currentPage;
@@ -73,7 +73,7 @@ class AppSidebar extends StatelessWidget {
           ),
 
           _buildMenuItem(
-            title: 'Invoices',
+            title: 'Billing',
             icon: Icons.receipt_long_outlined,
             page: AppPage.invoices,
           ),
@@ -90,22 +90,35 @@ class AppSidebar extends StatelessWidget {
             page: AppPage.items,
           ),
 
+          _buildMenuItem(
+            title: 'Reminders',
+            icon: Icons.notifications_outlined,
+            page: AppPage.reminders,
+          ),
+
           const Spacer(),
 
           const Divider(color: Colors.white24, height: 1, thickness: 1),
 
-          _buildLogoutButton(),
+          _buildLogoutButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildLogoutButton() {
+  Widget _buildLogoutButton(BuildContext context) {
     return InkWell(
       mouseCursor: SystemMouseCursors.click,
-      onTap: () async {
-        await AuthService.logout();
-        Get.offAll(() => const LoginScreen());
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (_) => LogoutConfirmationDialog(
+            onLogout: () async {
+              await AuthService.logout();
+              AppRoutes.offAll(AppRoutes.login);
+            },
+          ),
+        );
       },
       child: Container(
         height: 40,

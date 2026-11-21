@@ -66,6 +66,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
                 onPressed: () {
                   showDialog(
                     context: context,
+                    
                     builder: (_) => const AddItemDialog(),
                   );
                 },

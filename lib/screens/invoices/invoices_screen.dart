@@ -8,6 +8,7 @@ import 'package:tcs/models/invoice_payment_status.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/invoices/invoice_preview_screen.dart';
 import 'package:tcs/services/whatsapp_share.dart';
+import 'package:tcs/utils/billing_document_type.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/erp_mobile_tile.dart';
 
@@ -18,6 +19,9 @@ import '../../widgets/adder_button.dart';
 import '../../widgets/app_popup_menu.dart';
 import '../../widgets/delete_confirmation_dialog.dart';
 
+/// Tab selection for billing screen
+enum _BillingTab { invoices, quotations }
+
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
 
@@ -25,13 +29,37 @@ class InvoicesScreen extends StatefulWidget {
   State<InvoicesScreen> createState() => _InvoicesScreenState();
 }
 
-class _InvoicesScreenState extends State<InvoicesScreen> {
+class _InvoicesScreenState extends State<InvoicesScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  _BillingTab _selectedTab = _BillingTab.invoices;
+  TabController? _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.find<InvoiceController>().isQuotationTabSelected.value = false;
+    });
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController!.addListener(() {
+      if (!_tabController!.indexIsChanging) {
+        setState(() {
+          _selectedTab = _tabController!.index == 0
+              ? _BillingTab.invoices
+              : _BillingTab.quotations;
+        });
+        Get.find<InvoiceController>().isQuotationTabSelected.value =
+            _selectedTab == _BillingTab.quotations;
+      }
+    });
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -52,6 +80,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         inv.dateTime.toString().toLowerCase().contains(q);
   }
 
+  List<Invoice> _filteredInvoices(InvoiceController invoiceController) {
+    switch (_selectedTab) {
+      case _BillingTab.invoices:
+        return invoiceController.onlyInvoices;
+      case _BillingTab.quotations:
+        return invoiceController.onlyQuotations;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (Platform.isAndroid || Platform.isIOS) {
@@ -64,12 +101,16 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       );
     }
     if (Responsive.isDesktop(context)) {
-      return _buildDesktopInvoices();
+      return _buildDesktopBilling();
     }
-    return _buildMobileInvoices();
+    return _buildMobileBilling();
   }
 
-  Widget _buildDesktopInvoices() {
+  // ================================================================
+  // DESKTOP – Toggleable tab bar at top, then same table structure
+  // ================================================================
+
+  Widget _buildDesktopBilling() {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -77,14 +118,39 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           Row(
             children: [
               const Text(
-                "Invoices",
+                "Billing",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
+              // Tab toggle
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    _tabButton('Invoices', _BillingTab.invoices),
+                    Container(
+                      width: 1,
+                      height: 30,
+                      color: Colors.grey.shade300,
+                    ),
+                    _tabButton('Quotations', _BillingTab.quotations),
+                  ],
+                ),
+              ),
               adderButton(
-                label: "Create Invoice",
+                label: _selectedTab == _BillingTab.invoices
+                    ? "Create Invoice"
+                    : "Create Quotation",
                 onPressed: () {
-                  Get.to(() => const CreateInvoiceScreen());
+                  Get.to(
+                    () => CreateInvoiceScreen(
+                      isQuotation: _selectedTab == _BillingTab.quotations,
+                    ),
+                  );
                 },
               ),
             ],
@@ -96,7 +162,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               setState(() => _searchQuery = value.trim().toLowerCase());
             },
             decoration: InputDecoration(
-              hintText: 'Search invoice...',
+              hintText: 'Search invoices...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -111,21 +177,25 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   builder: (vehicleController) {
                     return GetBuilder<InvoiceController>(
                       builder: (invoiceController) {
-                        final invoices = invoiceController.invoices
+                        final docs = _filteredInvoices(invoiceController)
                             .where(
                               (inv) => matchesSearch(inv, customerController),
                             )
                             .toList();
 
-                        if (invoices.isEmpty) {
+                        if (docs.isEmpty) {
                           return Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey.shade300),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Center(
-                              child: Text("No invoices found"),
+                            child: Center(
+                              child: Text(
+                                _selectedTab == _BillingTab.invoices
+                                    ? "No invoices found"
+                                    : "No quotations found",
+                              ),
                             ),
                           );
                         }
@@ -141,16 +211,15 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                               showCheckboxColumn: false,
                               columnSpacing: 40,
                               columns: const [
-                                DataColumn(label: Text("Invoice ID")),
+                                DataColumn(label: Text("ID")),
                                 DataColumn(label: Text("Date")),
                                 DataColumn(label: Text("Customer")),
                                 DataColumn(label: Text("Vehicle")),
                                 DataColumn(label: Text("Items")),
-                                DataColumn(label: Text("Balance")),
-                                DataColumn(label: Text("Status")),
+                                DataColumn(label: Text("Amount")),
                                 DataColumn(label: Text("Actions")),
                               ],
-                              rows: invoices.map((inv) {
+                              rows: docs.map((inv) {
                                 final customer = customerController
                                     .getCustomerById(inv.customerId);
                                 final vehicle = vehicleController
@@ -185,33 +254,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     DataCell(Text(vehicleReg)),
                                     DataCell(Text(itemsCount.toString())),
                                     DataCell(
-                                      Text(
-                                        inv.balanceAmount.toStringAsFixed(2),
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: inv.paymentStatus.color
-                                              .withOpacity(0.1),
-
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          inv.paymentStatus.label,
-                                          style: TextStyle(
-                                            color: inv.paymentStatus.color,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
+                                      Text(inv.grandTotal.toStringAsFixed(2)),
                                     ),
                                     DataCell(
                                       AppPopupMenu(
@@ -227,7 +270,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                               );
                                             },
                                           ),
-
                                           AppPopupMenuOption(
                                             icon: Icons.delete_outline,
                                             label: 'Delete',
@@ -236,7 +278,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                                 context: context,
                                                 builder: (_) =>
                                                     DeleteConfirmationDialog(
-                                                      title: "Delete Invoice",
+                                                      title:
+                                                          "Delete ${BillingDocumentType.typeOf(inv.invoiceId)}",
                                                       message:
                                                           "Are you sure you want to delete ${inv.invoiceId}?",
                                                       onDelete: () async {
@@ -249,15 +292,18 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                               );
                                             },
                                           ),
-                                          AppPopupMenuOption(
-                                            icon: Icons.share_outlined,
-                                            label: "Send Payment Reminder",
-                                            onTap: () {
-                                              WhatsappShare.invoicePaymentReminder(
-                                                inv.invoiceId,
-                                              );
-                                            },
-                                          ),
+                                          if (BillingDocumentType.isInvoice(
+                                            inv.invoiceId,
+                                          ))
+                                            AppPopupMenuOption(
+                                              icon: Icons.share_outlined,
+                                              label: "Send Payment Reminder",
+                                              onTap: () {
+                                                WhatsappShare.invoicePaymentReminder(
+                                                  inv.invoiceId,
+                                                );
+                                              },
+                                            ),
                                         ],
                                       ),
                                     ),
@@ -279,11 +325,43 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
+  Widget _tabButton(String label, _BillingTab tab) {
+    final isSelected = _selectedTab == tab;
+    return GestureDetector(
+      onTap: () {
+        _tabController?.animateTo(tab == _BillingTab.invoices ? 0 : 1);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.black : Colors.transparent,
+          borderRadius: tab == _BillingTab.invoices
+              ? const BorderRadius.only(
+                  topLeft: Radius.circular(7),
+                  bottomLeft: Radius.circular(7),
+                )
+              : const BorderRadius.only(
+                  topRight: Radius.circular(7),
+                  bottomRight: Radius.circular(7),
+                ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ================================================================
   // MOBILE
   // ================================================================
 
-  Widget _buildMobileInvoices() {
+  Widget _buildMobileBilling() {
     return SafeArea(
       bottom: false,
       child: Scaffold(
@@ -293,18 +371,67 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           child: Column(
             children: [
               _buildMobileHeader(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 38,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.black54,
+                    labelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(text: 'Invoices'),
+                      Tab(text: 'Quotations'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               _buildSearch(),
-              const SizedBox(height: 16),
-              Expanded(child: _buildMobileInvoiceList()),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMobileBillingList(_BillingTab.invoices),
+                    _buildMobileBillingList(_BillingTab.quotations),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
-            Get.to(() => const CreateInvoiceScreen());
+            Get.to(
+              () => CreateInvoiceScreen(
+                isQuotation: _selectedTab == _BillingTab.quotations,
+              ),
+            );
           },
-          label: const Text("Create Invoice"),
+          label: Text(
+            _selectedTab == _BillingTab.invoices
+                ? "Create Invoice"
+                : "Create Quotation",
+          ),
           icon: const Icon(Icons.add),
           heroTag: null,
         ),
@@ -316,7 +443,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return const Align(
       alignment: Alignment.centerLeft,
       child: Text(
-        'Invoices',
+        'Billing',
         style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
       ),
     );
@@ -329,7 +456,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         setState(() => _searchQuery = value.trim().toLowerCase());
       },
       decoration: InputDecoration(
-        hintText: 'Search invoices...',
+        hintText: 'Search...',
         prefixIcon: const Icon(Icons.search),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
@@ -340,28 +467,35 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
-  Widget _buildMobileInvoiceList() {
+  Widget _buildMobileBillingList(_BillingTab tab) {
     return GetBuilder<CustomerController>(
       builder: (customerController) {
         return GetBuilder<VehicleController>(
           builder: (vehicleController) {
             return GetBuilder<InvoiceController>(
               builder: (invoiceController) {
-                final invoices = invoiceController.invoices
-                    .where((inv) => matchesSearch(inv, customerController))
-                    .toList();
+                final docs =
+                    (tab == _BillingTab.invoices
+                            ? invoiceController.onlyInvoices
+                            : invoiceController.onlyQuotations)
+                        .where((inv) => matchesSearch(inv, customerController))
+                        .toList();
 
-                if (invoices.isEmpty) {
-                  return const Center(child: Text("No invoices found"));
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      tab == _BillingTab.invoices
+                          ? "No invoices found"
+                          : "No quotations found",
+                    ),
+                  );
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 150),
-                  itemCount: invoices.length,
+                  itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    return _buildInvoiceTile(
-                      invoices[invoices.length - index - 1],
-                    );
+                    return _buildDocTile(docs[docs.length - index - 1]);
                   },
                 );
               },
@@ -372,7 +506,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
-  Widget _buildInvoiceTile(Invoice inv) {
+  Widget _buildDocTile(Invoice inv) {
     final customerController = Get.find<CustomerController>();
     final vehicleController = Get.find<VehicleController>();
     final customer = customerController.getCustomerById(inv.customerId);
@@ -381,6 +515,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       0.0,
       (sum, item) => sum + item.taxAmount,
     );
+    final isInvoice = BillingDocumentType.isInvoice(inv.invoiceId);
 
     return ErpMobileTile(
       onTap: () {
@@ -388,7 +523,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       },
       leading: CircleAvatar(
         backgroundColor: Colors.grey.shade100,
-        child: const Icon(Icons.receipt_long, color: Colors.black87),
+        child: Icon(
+          isInvoice ? Icons.receipt_long : Icons.description_outlined,
+          color: Colors.black87,
+        ),
       ),
       title: inv.invoiceId,
       subtitles: [
@@ -404,36 +542,37 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             children: [
               const SizedBox(height: 5),
               Text(
-                '₹${inv.balanceAmount.toStringAsFixed(0)}',
+                '₹${inv.grandTotal.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 5),
-              Container(
-                width: 50,
-                decoration: BoxDecoration(
-                  color: inv.paymentStatus.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
+              if (isInvoice)
+                Container(
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: inv.paymentStatus.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Center(
-                    child: Text(
-                      inv.paymentStatus.label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: inv.paymentStatus.color,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    child: Center(
+                      child: Text(
+                        inv.paymentStatus.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: inv.paymentStatus.color,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
           AppPopupMenu(
@@ -445,7 +584,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   Get.to(() => CreateInvoiceScreen(invoice: inv));
                 },
               ),
-
               AppPopupMenuOption(
                 icon: Icons.delete_outline,
                 label: 'Delete',
@@ -453,7 +591,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   showDialog(
                     context: context,
                     builder: (_) => DeleteConfirmationDialog(
-                      title: 'Delete Invoice',
+                      title:
+                          'Delete ${BillingDocumentType.typeOf(inv.invoiceId)}',
                       message:
                           'Are you sure you want to delete ${inv.invoiceId}?',
                       onDelete: () async {
@@ -465,13 +604,14 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   );
                 },
               ),
-              AppPopupMenuOption(
-                icon: Icons.share_outlined,
-                label: "Send Payment Reminder",
-                onTap: () {
-                  WhatsappShare.invoicePaymentReminder(inv.invoiceId);
-                },
-              ),
+              if (isInvoice)
+                AppPopupMenuOption(
+                  icon: Icons.share_outlined,
+                  label: "Send Payment Reminder",
+                  onTap: () {
+                    WhatsappShare.invoicePaymentReminder(inv.invoiceId);
+                  },
+                ),
             ],
           ),
         ],

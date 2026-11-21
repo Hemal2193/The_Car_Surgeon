@@ -6,5 +6,6 @@ class AppNavigationController extends GetxController {
 
   void selectPage(AppPage page) {
     currentPage.value = page;
+    update();
   }
 }

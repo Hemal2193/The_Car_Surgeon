@@ -27,6 +27,9 @@ class IdResolver {
         await resolver._resolveMax('reminders', 'reminder_id', 'REM-');
     final maxPayment =
         await resolver._resolveMax('payments', 'payment_id', 'PAY-');
+    // Quotations also live in the 'invoices' table, prefixed QUO-
+    final maxQuotation =
+        await resolver._resolveMax('invoices', 'invoice_id', 'QUO-');
 
     if (maxCustomer != null) {
       IdGenerator.setInitialCustomerId(maxCustomer);
@@ -45,6 +48,9 @@ class IdResolver {
     }
     if (maxPayment != null) {
       IdGenerator.setInitialPaymentId(maxPayment);
+    }
+    if (maxQuotation != null) {
+      IdGenerator.setInitialQuotationId(maxQuotation);
     }
   }
 

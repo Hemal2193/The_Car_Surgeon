@@ -8,6 +8,7 @@ import 'package:tcs/database/id_generator.dart';
 import 'package:tcs/models/invoice_model.dart';
 import 'package:tcs/models/payment_model.dart';
 import 'package:tcs/services/supabase_sync_service.dart';
+import 'package:tcs/widgets/my_snackbar.dart';
 
 import 'app_text_field.dart';
 import 'custom_button.dart';
@@ -82,7 +83,8 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
   // Search index
   // ---------------------------------------------------------------------------
   void _buildSearchIndex() {
-    final invoices = invoiceCtrl.invoices;
+    // Only invoices (not quotations) can collect payments
+    final invoices = invoiceCtrl.onlyInvoices;
     final results = <_SearchResult>[];
 
     for (final inv in invoices) {
@@ -510,10 +512,11 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                               );
 
                               if (amount == null || amount <= 0) {
-                                Get.snackbar(
-                                  "Error",
-                                  "Please enter a valid amount",
-                                  snackPosition: SnackPosition.BOTTOM,
+                                MySnackbar.show(
+                                  title: "Error",
+                                  message: "Please enter a valid amount",
+                                  type: SnackbarType.error,
+                                  context: context,
                                 );
                                 return;
                               }
@@ -541,10 +544,11 @@ class _PaymentCollectionDialogState extends State<PaymentCollectionDialog> {
                                 Navigator.pop(context);
                               }
 
-                              Get.snackbar(
-                                "Success",
-                                "Payment collected successfully",
-                                snackPosition: SnackPosition.BOTTOM,
+                              MySnackbar.show(
+                                title: "Success",
+                                message: "Payment collected successfully",
+                                type: SnackbarType.success,
+                                context: context,
                               );
                             },
                             "Collect",

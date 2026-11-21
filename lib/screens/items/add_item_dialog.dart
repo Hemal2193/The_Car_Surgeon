@@ -23,6 +23,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
   final nameController = TextEditingController();
   final hsnController = TextEditingController();
   final priceController = TextEditingController();
+  final priceWithGstController = TextEditingController();
 
   final types = ['Product', 'Service', 'Labour'];
   final gstOptions = ['0%', '5%', '12%', '18%', '28%', '40%'];
@@ -45,6 +46,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
   void initState() {
     super.initState();
 
+    priceController.addListener(_calculatePriceWithGst);
+
     final item = widget.item;
     if (item != null) {
       nameController.text = item.name;
@@ -59,9 +62,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
   @override
   void dispose() {
     _removeGstOverlay();
+    priceController.removeListener(_calculatePriceWithGst);
     nameController.dispose();
     hsnController.dispose();
     priceController.dispose();
+    priceWithGstController.dispose();
     super.dispose();
   }
 
@@ -113,6 +118,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                                 selectedGst = g;
                               });
                               _removeGstOverlay();
+                              _calculatePriceWithGst();
                             },
                             child: Container(
                               width: double.infinity,
@@ -141,6 +147,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
   void _removeGstOverlay() {
     _gstOverlay?.remove();
     _gstOverlay = null;
+  }
+
+  void _calculatePriceWithGst() {
+    final gstPercent = double.tryParse(selectedGst.replaceAll('%', '')) ?? 0;
+    final price = double.tryParse(priceController.text) ?? 0;
+    final withGst = price + (price * gstPercent / 100);
+    priceWithGstController.text = withGst.toStringAsFixed(2);
   }
 
   void _showAddUnitDialog() {
@@ -411,103 +424,136 @@ class _AddItemDialogState extends State<AddItemDialog> {
   Widget _buildMobileAddItem(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.92,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
-          children: [
-            SizedBox(height: 14),
-            _handleBar(),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: 14),
+              _handleBar(),
 
-            Expanded(
-              child: SingleChildScrollView(
-                controller: widget.scrollController,
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _title(),
-                    const SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: widget.scrollController,
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    20,
+                    20,
+                    40 + MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _title(),
+                      const SizedBox(height: 20),
 
-                    _field("Item Name *", nameController),
-                    if (_nameError != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _nameError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-
-                    _label("Type"),
-                    Wrap(
-                      spacing: 10,
-                      children: types.map((t) {
-                        final selected = selectedType == t;
-
-                        return _chip(
-                          t,
-                          selected,
-                          () => setState(() => selectedType = t),
-                        );
-                      }).toList(),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    Row(
-                      children: [
-                        Expanded(child: _field("HSN / SAC", hsnController)),
-                        const SizedBox(width: 12),
-
-                        Expanded(child: _gstField()),
+                      _field("Item Name *", nameController),
+                      if (_nameError != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _nameError!,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
-                    ),
+                      const SizedBox(height: 14),
 
-                    const SizedBox(height: 14),
+                      _label("Type"),
+                      Wrap(
+                        spacing: 10,
+                        children: types.map((t) {
+                          final selected = selectedType == t;
 
-                    _label("Qty Type"),
-                    Wrap(
-                      spacing: 10,
-                      children: [
-                        ...qtyTypes.map((q) {
-                          final selected = selectedQtyType == q;
                           return _chip(
-                            q,
+                            t,
                             selected,
-                            () => setState(() => selectedQtyType = q),
+                            () => setState(() => selectedType = t),
                           );
-                        }),
-                        _chip("+ Add", false, _showAddUnitDialog),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    _field(
-                      "Price",
-                      priceController,
-                      keyboard: TextInputType.number,
-                    ),
-                    if (_priceError != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _priceError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                        }).toList(),
                       ),
+
+                      const SizedBox(height: 14),
+
+                      Row(
+                        children: [
+                          Expanded(child: _field("HSN / SAC", hsnController)),
+                          const SizedBox(width: 12),
+
+                          Expanded(child: _gstField()),
+                        ],
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      _label("Qty Type"),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          ...qtyTypes.map((q) {
+                            final selected = selectedQtyType == q;
+                            return _chip(
+                              q,
+                              selected,
+                              () => setState(() => selectedQtyType = q),
+                            );
+                          }),
+                          _chip("+ Add", false, _showAddUnitDialog),
+                        ],
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _field(
+                              "Price",
+                              priceController,
+                              keyboard: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
+                          //automatically counts the price with selected gst
+                          Expanded(
+                            child: _field(
+                              "With GST",
+                              priceWithGstController,
+                              keyboard: TextInputType.none,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_priceError != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _priceError!,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+
+                      _buttons(),
                     ],
-
-                    const SizedBox(height: 24),
-
-                    _buttons(),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -677,6 +723,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
       Get.find<ItemController>().addItem(item);
     }
 
-    Navigator.pop(context);
+    Navigator.pop(context, item);
   }
 }

@@ -6,8 +6,11 @@ import 'package:tcs/controllers/reminder_controller.dart';
 import 'package:tcs/models/reminder_model.dart';
 import 'package:tcs/services/invoice_pdf_preview.dart';
 import 'package:tcs/services/whatsapp_share.dart';
+import 'package:tcs/utils/billing_document_type.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
+import 'package:tcs/widgets/confirmation_dialog.dart';
+import 'package:tcs/widgets/my_snackbar.dart';
 
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/payment_collection_dialog.dart';
@@ -73,6 +76,8 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
         (v) => v.vehicleId == invoice.vehicleId,
       );
 
+      final isInvoice = BillingDocumentType.isInvoice(invoice.invoiceId);
+
       return GetBuilder<ReminderController>(
         builder: (reminderCtrl) {
           final List<Reminder> reminders = reminderCtrl.getRemindersByInvoiceId(
@@ -128,21 +133,17 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                   icon: const Icon(Icons.arrow_back),
                                   onPressed: () => Get.back(),
                                 ),
-
                                 const SizedBox(width: 5),
-
-                                const Text(
-                                  "Invoice Preview",
-                                  style: TextStyle(
+                                Text(
+                                  "${BillingDocumentType.getLabel(invoice.invoiceId)} Preview",
+                                  style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 25),
-
                             Expanded(
                               child: ScrollConfiguration(
                                 behavior: ScrollConfiguration.of(
@@ -157,7 +158,7 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                         children: [
                                           Expanded(
                                             child: _infoField(
-                                              "Invoice ID",
+                                              "${BillingDocumentType.getShortLabel(invoice.invoiceId)} ID",
                                               invoice.invoiceId,
                                             ),
                                           ),
@@ -171,7 +172,6 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                           ),
                                         ],
                                       ),
-
                                       Row(
                                         children: [
                                           Expanded(
@@ -188,17 +188,13 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                           ),
                                         ],
                                       ),
-
                                       _infoField(
                                         "Vehicle",
                                         vehicle?.registrationNumber ??
                                             "Unknown",
                                       ),
-
                                       const SizedBox(height: 25),
-
-                                      _paymentHistory(invoice),
-
+                                      if (isInvoice) _paymentHistory(invoice),
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
@@ -218,9 +214,7 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                               grandTotal,
                                               bold: true,
                                             ),
-
                                             const Divider(),
-
                                             _summaryRow(
                                               "Discount",
                                               invoice.discount,
@@ -229,31 +223,31 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                               "Advance",
                                               invoice.advanceAmount,
                                             ),
-                                            _summaryRow(
-                                              "Collected",
-                                              totalCollected,
-                                            ),
-
+                                            if (isInvoice)
+                                              _summaryRow(
+                                                "Collected",
+                                                totalCollected,
+                                              ),
                                             const Divider(),
-
                                             _summaryRow(
-                                              "Balance",
-                                              invoice.balanceAmount,
+                                              isInvoice
+                                                  ? "Balance"
+                                                  : "Total Amount",
+                                              isInvoice
+                                                  ? invoice.balanceAmount
+                                                  : grandTotal,
                                               bold: true,
                                             ),
                                           ],
                                         ),
                                       ),
-
                                       const SizedBox(height: 20),
-
                                       _reminderListCardDesktop(
                                         reminders,
                                         reminderCtrl,
                                       ),
-
                                       const SizedBox(height: 20),
-
+                                      // === EDIT BUTTON ===
                                       SizedBox(
                                         width: double.infinity,
                                         child: cButton(
@@ -264,29 +258,97 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                               ),
                                             );
                                           },
-                                          'Edit Invoice',
+                                          'Edit ${BillingDocumentType.getLabel(invoice.invoiceId)}',
                                           true,
                                         ),
                                       ),
-
                                       const SizedBox(height: 10),
-
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: cButton(
-                                          () {
-                                            PaymentCollectionDialog.show(
-                                              context: context,
-                                              initialInvoice: invoice,
-                                            );
-                                          },
-                                          'Collect Payment',
-                                          true,
+                                      // === INVOICE-ONLY buttons ===
+                                      if (isInvoice) ...[
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: cButton(
+                                            () {
+                                              PaymentCollectionDialog.show(
+                                                context: context,
+                                                initialInvoice: invoice,
+                                              );
+                                            },
+                                            'Collect Payment',
+                                            true,
+                                          ),
                                         ),
-                                      ),
-
-                                      const SizedBox(height: 10),
-
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: cButton(
+                                            () {
+                                              WhatsappShare.invoicePaymentReminder(
+                                                invoice.invoiceId,
+                                              );
+                                            },
+                                            "Send Payment Reminder",
+                                            false,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
+                                      // === QUOTATION-ONLY Convert to Invoice ===
+                                      if (!isInvoice) ...[
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: cButton(
+                                            () async {
+                                              final invoiceCtrl =
+                                                  Get.find<InvoiceController>();
+                                              final hasBeenConverted =
+                                                  invoiceCtrl
+                                                      .hasQuotationBeenConverted(
+                                                        invoice.invoiceId,
+                                                      );
+                                              if (hasBeenConverted) {
+                                                final confirmed = await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (_) => ConfirmationDialog(
+                                                    icon: Icons.swap_horiz,
+                                                    title: "Convert Again?",
+                                                    message:
+                                                        "An invoice already exists for this quotation.\n\n"
+                                                        "Do you want to convert again with a new Invoice ID?",
+                                                    confirmLabel: "Confirm",
+                                                    cancelLabel: "Cancel",
+                                                  ),
+                                                );
+                                                if (confirmed != true) return;
+                                              }
+                                              final newId = await invoiceCtrl
+                                                  .convertQuotationToInvoice(
+                                                    invoice.invoiceId,
+                                                  );
+                                              if (newId != null) {
+                                                if (context.mounted) {
+                                                  MySnackbar.show(
+                                                    title: "Converted",
+                                                    message:
+                                                        "Invoice $newId created from quotation",
+                                                    type: SnackbarType.success,
+                                                    context: context,
+                                                  );
+                                                  Get.to(
+                                                    () => InvoicePreviewScreen(
+                                                      invoiceId: newId,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            "Convert to Invoice",
+                                            true,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
+                                      // === SHARED PDF buttons ===
                                       SizedBox(
                                         width: double.infinity,
                                         child: cButton(
@@ -299,9 +361,7 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                           false,
                                         ),
                                       ),
-
                                       const SizedBox(height: 10),
-
                                       SizedBox(
                                         width: double.infinity,
                                         child: cButton(
@@ -311,22 +371,17 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                                   invoice,
                                                   customer,
                                                 );
-
                                             if (path != null &&
                                                 context.mounted) {
-                                              Get.snackbar(
-                                                'WhatsApp',
-                                                'PDF copied. Press Ctrl + V in WhatsApp.',
-                                                snackPosition:
-                                                    SnackPosition.BOTTOM,
+                                              MySnackbar.show(
+                                                title: 'WhatsApp',
+                                                message:
+                                                    'PDF copied. Press Ctrl + V in WhatsApp.',
+                                                type: SnackbarType.info,
+                                                context: context,
                                                 duration: const Duration(
                                                   seconds: 6,
                                                 ),
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 20,
-                                                    ),
                                               );
                                             }
                                           },
@@ -334,22 +389,6 @@ Widget _buildDesktopInvoicePreview(BuildContext context, String invoiceId) {
                                           false,
                                         ),
                                       ),
-
-                                      const SizedBox(height: 10),
-
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: cButton(
-                                          () {
-                                            WhatsappShare.invoicePaymentReminder(
-                                              invoice.invoiceId,
-                                            );
-                                          },
-                                          "Send Payment Reminder",
-                                          false,
-                                        ),
-                                      ),
-
                                       const SizedBox(height: 20),
                                     ],
                                   ),
@@ -410,6 +449,8 @@ Widget _buildMobileInvoicePreview(
         (v) => v.vehicleId == invoice.vehicleId,
       );
 
+      final isInvoice = BillingDocumentType.isInvoice(invoice.invoiceId);
+
       return GetBuilder<ReminderController>(
         builder: (reminderCtrl) {
           final List<Reminder> reminders = reminderCtrl.getRemindersByInvoiceId(
@@ -450,9 +491,9 @@ Widget _buildMobileInvoicePreview(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () => Get.back(),
               ),
-              title: const Text(
-                "Invoice Preview",
-                style: TextStyle(
+              title: Text(
+                "${BillingDocumentType.getLabel(invoice.invoiceId)} Preview",
+                style: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
@@ -468,17 +509,61 @@ Widget _buildMobileInvoicePreview(
                         Get.to(() => CreateInvoiceScreen(invoice: invoice));
                       },
                     ),
-                    //Collect payment
-                    AppPopupMenuOption(
-                      label: "Collect Payment",
-                      icon: Icons.payments_outlined,
-                      onTap: () {
-                        PaymentCollectionDialog.show(
-                          context: context,
-                          initialInvoice: invoice,
-                        );
-                      },
-                    ),
+
+                    // Invoice-only actions
+                    if (isInvoice) ...[
+                      AppPopupMenuOption(
+                        label: "Collect Payment",
+                        icon: Icons.payments_outlined,
+                        onTap: () {
+                          PaymentCollectionDialog.show(
+                            context: context,
+                            initialInvoice: invoice,
+                          );
+                        },
+                      ),
+                    ],
+
+                    // Quotation-only actions
+                    if (!isInvoice) ...[
+                      AppPopupMenuOption(
+                        icon: Icons.swap_horiz,
+                        label: "Convert to Invoice",
+                        onTap: () async {
+                          final invoiceCtrl = Get.find<InvoiceController>();
+                          final hasBeenConverted = invoiceCtrl
+                              .hasQuotationBeenConverted(invoice.invoiceId);
+                          if (hasBeenConverted) {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => ConfirmationDialog(
+                                icon: Icons.swap_horiz,
+                                title: "Convert Again?",
+                                message:
+                                    "An invoice already exists for this quotation.\n\n"
+                                    "Do you want to convert again with a new Invoice ID?",
+                                confirmLabel: "Confirm",
+                                cancelLabel: "Cancel",
+                              ),
+                            );
+                            if (confirmed != true) return;
+                          }
+                          final newId = await invoiceCtrl
+                              .convertQuotationToInvoice(invoice.invoiceId);
+                          if (newId != null && context.mounted) {
+                            MySnackbar.show(
+                              title: "Converted",
+                              message: "Invoice $newId created from quotation",
+                              type: SnackbarType.success,
+                              context: context,
+                            );
+                            Get.to(
+                              () => InvoicePreviewScreen(invoiceId: newId),
+                            );
+                          }
+                        },
+                      ),
+                    ],
 
                     //Download PDF
                     AppPopupMenuOption(
@@ -491,21 +576,20 @@ Widget _buildMobileInvoicePreview(
                                 invoice,
                               );
                           if (path != null) {
-                            Get.snackbar(
-                              margin: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 20,
-                              ),
-                              "Downloaded",
-                              "Invoice saved to Downloads/TCS/${invoice.invoiceId}.pdf",
-                              snackPosition: SnackPosition.BOTTOM,
+                            MySnackbar.show(
+                              title: "Downloaded",
+                              message:
+                                  "${BillingDocumentType.getLabel(invoice.invoiceId)} saved",
+                              type: SnackbarType.success,
+                              context: context,
                             );
                           }
                         } catch (e) {
-                          Get.snackbar(
-                            "Error",
-                            "Failed to download PDF: $e",
-                            snackPosition: SnackPosition.BOTTOM,
+                          MySnackbar.show(
+                            title: "Error",
+                            message: "Failed to download PDF: $e",
+                            type: SnackbarType.error,
+                            context: context,
                           );
                         }
                       },
@@ -522,23 +606,27 @@ Widget _buildMobileInvoicePreview(
                             isMobile: true,
                           );
                         } catch (e) {
-                          Get.snackbar(
-                            "Error",
-                            "Failed to share PDF: $e",
-                            snackPosition: SnackPosition.BOTTOM,
+                          MySnackbar.show(
+                            title: "Error",
+                            message: "Failed to share PDF: $e",
+                            type: SnackbarType.error,
+                            context: context,
                           );
                         }
                       },
                     ),
 
-                    //Send Payment Reminder
-                    AppPopupMenuOption(
-                      icon: Icons.notifications_outlined,
-                      label: "Send Payment Reminder",
-                      onTap: () {
-                        WhatsappShare.invoicePaymentReminder(invoice.invoiceId);
-                      },
-                    ),
+                    //Send Payment Reminder (invoice only)
+                    if (isInvoice)
+                      AppPopupMenuOption(
+                        icon: Icons.notifications_outlined,
+                        label: "Send Payment Reminder",
+                        onTap: () {
+                          WhatsappShare.invoicePaymentReminder(
+                            invoice.invoiceId,
+                          );
+                        },
+                      ),
                   ],
                 ),
               ],
@@ -581,7 +669,7 @@ Widget _buildMobileInvoicePreview(
 
                     const SizedBox(height: 15),
 
-                    _paymentHistoryCard(invoice),
+                    if (isInvoice) _paymentHistoryCard(invoice),
 
                     const SizedBox(height: 15),
                     _financialSummaryCard(
@@ -592,11 +680,10 @@ Widget _buildMobileInvoicePreview(
                       totalCollected,
                       advanceAmount,
                       balanceAmount,
+                      isInvoice,
                     ),
 
                     const SizedBox(height: 15),
-
-                    // _actionButtons(context, invoice),
                   ],
                 ),
               ),
@@ -681,6 +768,7 @@ Widget _financialSummaryCard(
   double totalCollected,
   double advanceAmount,
   double balanceAmount,
+  bool isInvoice,
 ) {
   return Container(
     width: double.infinity,
@@ -698,95 +786,16 @@ Widget _financialSummaryCard(
 
         _summaryRow("Discount", discount),
         _summaryRow("Advance", advanceAmount),
-        _summaryRow("Collected", totalCollected),
+        if (isInvoice) _summaryRow("Collected", totalCollected),
 
         const Divider(),
-        _summaryRow("Balance", balanceAmount, bold: true),
+        _summaryRow(
+          isInvoice ? "Balance" : "Total Amount",
+          isInvoice ? balanceAmount : grandTotal,
+          bold: true,
+        ),
       ],
     ),
-  );
-}
-
-Widget _actionButtons(BuildContext context, Invoice invoice) {
-  return Column(
-    children: [
-      cButton(
-        () {
-          Get.to(() => CreateInvoiceScreen(invoice: invoice));
-        },
-        "Edit Invoice",
-        true,
-      ),
-
-      const SizedBox(height: 10),
-
-      cButton(
-        () {
-          PaymentCollectionDialog.show(
-            context: context,
-            initialInvoice: invoice,
-          );
-        },
-        "Collect Payment",
-        true,
-      ),
-
-      const SizedBox(height: 10),
-
-      cButton(
-        () async {
-          try {
-            final path = await InvoicePdfService.downloadInvoicePdfMobile(
-              invoice,
-            );
-            if (path != null) {
-              Get.snackbar(
-                margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-                "Downloaded",
-                "Invoice saved to Downloads/TCS/${invoice.invoiceId}.pdf",
-                snackPosition: SnackPosition.BOTTOM,
-              );
-            }
-          } catch (e) {
-            Get.snackbar(
-              "Error",
-              "Failed to download PDF: $e",
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          }
-        },
-        "Download PDF",
-        false,
-      ),
-
-      const SizedBox(height: 10),
-
-      cButton(
-        () async {
-          try {
-            await InvoicePdfService.shareInvoicePdf(invoice, isMobile: true);
-          } catch (e) {
-            Get.snackbar(
-              "Error",
-              "Failed to share PDF: $e",
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          }
-        },
-        "Share PDF",
-        false,
-      ),
-
-      const SizedBox(height: 10),
-
-      cButton(
-        () {
-          WhatsappShare.invoicePaymentReminder(invoice.invoiceId);
-        },
-        "Send Payment Reminder",
-        false,
-      ),
-    ],
   );
 }
 
@@ -898,7 +907,6 @@ Widget _paymentHistory(Invoice invoice) {
             ),
             child: Row(
               children: [
-                // 1. Expanded or Flexible takes all available space on the left
                 Expanded(
                   child: Text(
                     _formatPaymentDate(p.dateTime),
@@ -908,14 +916,10 @@ Widget _paymentHistory(Invoice invoice) {
                     ),
                   ),
                 ),
-
-                // 2. Use SizedBox with a fixed width for the Amount/Mode section
                 SizedBox(
-                  width:
-                      80, // Adjust this width based on your max expected amount length
+                  width: 80,
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.end, // Align text to the right
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         "₹${p.amount.toStringAsFixed(2)}",
@@ -950,16 +954,6 @@ Widget _paymentHistory(Invoice invoice) {
             ),
           );
         }),
-        //total payment collected(sum of all the collected payments for the invoice)
-        // Row(
-        //   mainAxisAlignment: MainAxisAlignment.end,
-        //   children: [
-        //     Text(
-        //       "Total Payment Collected: Rs. ${payments.fold<double>(0, (sum, p) => sum + p.amount)}",
-        //       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        //     ),
-        //   ],
-        // ),
       ],
     ),
   );
@@ -1003,7 +997,6 @@ Widget _reminderListCardDesktop(
             ),
             child: Row(
               children: [
-                // Checkbox for completion
                 GestureDetector(
                   onTap: () => reminderCtrl.toggleCompleted(r.reminderId),
                   child: Container(
@@ -1115,7 +1108,6 @@ Widget _reminderListCardMobile(
             ),
             child: Row(
               children: [
-                // Checkbox for completion
                 GestureDetector(
                   onTap: () => reminderCtrl.toggleCompleted(r.reminderId),
                   child: Container(
@@ -1230,7 +1222,6 @@ Widget _paymentHistoryCard(Invoice invoice) {
           ),
           child: Row(
             children: [
-              // 1. Expanded or Flexible takes all available space on the left
               Expanded(
                 child: Text(
                   _formatPaymentDate(p.dateTime),
@@ -1240,14 +1231,10 @@ Widget _paymentHistoryCard(Invoice invoice) {
                   ),
                 ),
               ),
-
-              // 2. Use SizedBox with a fixed width for the Amount/Mode section
               SizedBox(
-                width:
-                    80, // Adjust this width based on your max expected amount length
+                width: 80,
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.end, // Align text to the right
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       "₹${p.amount.toStringAsFixed(2)}",
@@ -1282,16 +1269,6 @@ Widget _paymentHistoryCard(Invoice invoice) {
           ),
         );
       }),
-      //total payment collected(sum of all the collected payments for the invoice)
-      // Row(
-      //   mainAxisAlignment: MainAxisAlignment.end,
-      //   children: [
-      //     Text(
-      //       "Total Payment Collected: Rs. ${payments.fold<double>(0, (sum, p) => sum + p.amount)}",
-      //       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      //     ),
-      //   ],
-      // ),
     ],
   );
 }

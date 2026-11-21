@@ -6,15 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tcs/models/invoice_payment_status.dart';
-import 'package:tcs/screens/login/login_screen.dart';
+import 'package:tcs/routes/app_routes.dart';
 import 'package:tcs/screens/invoices/create_invoice_screen.dart';
 import 'package:tcs/screens/payments/mobile_payment_history_screen.dart';
+import 'package:tcs/screens/reminders/mobile_reminders_screen.dart';
 import 'package:tcs/services/auth_service.dart';
 import 'package:tcs/services/whatsapp_share.dart';
 import 'package:tcs/utils/responsive.dart';
 import 'package:tcs/widgets/app_popup_menu.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
 import 'package:tcs/widgets/erp_mobile_tile.dart';
+import 'package:tcs/widgets/logout_confirmation_dialog.dart';
 import 'package:tcs/widgets/payment_collection_dialog.dart';
 
 import '../../controllers/customer_controller.dart';
@@ -92,7 +94,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Search vehicles
     for (final v in vehicleCtrl.vehicles) {
       if (v.registrationNumber.toLowerCase().contains(q) ||
-          v.vehicleId.toLowerCase().contains(q)) {
+          v.vehicleId.toLowerCase().contains(q) ||
+          v.model.toLowerCase().contains(q) ||
+          v.make.toLowerCase().contains(q)) {
         final customer = customerCtrl.getCustomerById(v.customerId);
         results.add(
           SearchResult(
@@ -169,10 +173,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildDesktopDashboard() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            "Dashboard",
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
           // =====================================================
           // UNIVERSAL SEARCH
           // =====================================================
@@ -280,8 +289,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 InkWell(
                   onTap: () {
-                    AuthService.logout();
-                    Get.offAll(LoginScreen());
+                    showDialog(
+                      context: context,
+                      builder: (_) => LogoutConfirmationDialog(
+                        onLogout: () async {
+                          await AuthService.logout();
+                          AppRoutes.offAll(AppRoutes.login);
+                        },
+                      ),
+                    );
                   },
                   child: Icon(Icons.logout),
                 ),
@@ -438,7 +454,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final recentInvoices = invoiceCtrl.invoices.toList()
           ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-        final latest5 = recentInvoices.take(5).toList();
+        final latest5 = recentInvoices.take(3).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,9 +602,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Reminders',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Reminders',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                InkWell(
+                  onTap: () {
+                    Get.to(() => const MobileRemindersScreen());
+                  },
+                  child: Text(
+                    'View all',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 12),
@@ -1048,11 +1079,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Text(
-                      "Latest 5",
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
+                    InkWell(
+                      mouseCursor: SystemMouseCursors.click,
+                      onTap: () {
+                        PaymentCollectionDialog.show(context: context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, size: 12, color: Colors.white),
+                              const SizedBox(width: 4),
+                              const Text(
+                                "Collect Payment",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -1073,7 +1129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     headingRowHeight: 36,
                     dataRowMinHeight: 36,
                     dataRowMaxHeight: 44,
-                    columnSpacing: 45,
+                    columnSpacing: 40,
                     columns: const [
                       DataColumn(
                         label: Text(

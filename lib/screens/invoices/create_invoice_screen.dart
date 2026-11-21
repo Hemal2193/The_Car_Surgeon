@@ -14,11 +14,13 @@ import 'package:tcs/widgets/app_text_field.dart';
 import 'package:tcs/widgets/app_titlebar.dart';
 import 'package:tcs/widgets/custom_button.dart';
 import 'package:tcs/widgets/delete_confirmation_dialog.dart';
+import 'package:tcs/widgets/my_snackbar.dart';
 
 import '../../models/customer_model.dart';
 import '../../models/vehicle_model.dart';
 import '../../controllers/customer_controller.dart';
 import '../../controllers/vehicle_controller.dart';
+import '../../utils/billing_document_type.dart';
 import 'add_item_popup.dart';
 
 // =========================================================
@@ -47,8 +49,13 @@ class _InvoiceReminderData {
 
 class CreateInvoiceScreen extends StatefulWidget {
   final Invoice? invoice;
+  final bool isQuotation;
 
-  const CreateInvoiceScreen({super.key, this.invoice});
+  const CreateInvoiceScreen({
+    super.key,
+    this.invoice,
+    this.isQuotation = false,
+  });
 
   @override
   State<CreateInvoiceScreen> createState() => _CreateInvoiceScreenState();
@@ -94,6 +101,15 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   double get remainingAmount => grandTotal - advanceAmount - discount;
 
   bool get isEditing => widget.invoice != null;
+
+  String get _documentLabel {
+    if (widget.invoice != null) {
+      return BillingDocumentType.isQuotation(widget.invoice!.invoiceId)
+          ? 'Quotation'
+          : 'Invoice';
+    }
+    return widget.isQuotation ? 'Quotation' : 'Invoice';
+  }
 
   List<_InvoiceRow> get _filteredRows {
     if (_searchQuery.isEmpty) return rows;
@@ -272,9 +288,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           try {
             await reminderCtrl.updateReminder(existing);
           } catch (e, st) {
-            Get.snackbar(
-              'Reminder Save Error',
-              'Failed to update reminder: $e',
+            MySnackbar.show(
+              title: 'Reminder Save Error',
+              message: 'Failed to update reminder: $e',
+              type: SnackbarType.error,
+              context: context,
             );
             print('updateReminder error: $e');
             print(st);
@@ -298,7 +316,12 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           await reminderCtrl.addReminder(reminder);
           print("Reminder added");
         } catch (e, st) {
-          Get.snackbar('Reminder Save Error', 'Failed to create reminder: $e');
+          MySnackbar.show(
+            title: 'Reminder Save Error',
+            message: 'Failed to create reminder: $e',
+            type: SnackbarType.error,
+            context: context,
+          );
           print('addReminder error: $e');
           print(st);
         }
@@ -338,20 +361,21 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
 
     final invoiceCtrl = Get.find<InvoiceController>();
     if (selectedCustomer == null || selectedVehicle == null || rows.isEmpty) {
-      Get.snackbar(
-        "Validation Error",
-        "Please select customer, vehicle, and add items.",
-        snackPosition: SnackPosition.BOTTOM,
+      MySnackbar.show(
+        title: "Validation Error",
+        message: "Please select customer, vehicle, and add items.",
+        type: SnackbarType.error,
+        context: context,
       );
       return;
     }
 
     // for (final r in _reminders) {
     //   if (r.titleController.text.trim().isEmpty) {
-    //     Get.snackbar(
-    //       "Validation Error",
-    //       "Reminder title cannot be empty.",
-    //       snackPosition: SnackPosition.BOTTOM,
+    //     MySnackbar.show(
+    //       title: "Validation Error",
+    //       message: "Reminder title cannot be empty.",
+    //       type: SnackbarType.error,
     //     );
     //     return;
     //   }
@@ -373,8 +397,14 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       );
     }).toList();
 
+    final invoiceId =
+        widget.invoice?.invoiceId ??
+        (widget.isQuotation
+            ? IdGenerator.generateQuotationId()
+            : IdGenerator.generateInvoiceId());
+
     final invoice = Invoice(
-      invoiceId: widget.invoice?.invoiceId ?? IdGenerator.generateInvoiceId(),
+      invoiceId: invoiceId,
       customerId: selectedCustomer!.customerId,
       vehicleId: selectedVehicle!.vehicleId,
       dateTime: _invoiceDate,
@@ -393,10 +423,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       } catch (e, st) {
         debugPrint("updateInvoice error: $e");
         debugPrint("$st");
-        Get.snackbar(
-          "Invoice Save Error",
-          "Failed to update invoice: $e",
-          snackPosition: SnackPosition.BOTTOM,
+        MySnackbar.show(
+          title: "Invoice Save Error",
+          message: "Failed to update invoice: $e",
+          type: SnackbarType.error,
+          context: context,
         );
         return;
       }
@@ -419,18 +450,19 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       } catch (e, st) {
         debugPrint("createRemindersIfNeeded error: $e");
         debugPrint("$st");
-        Get.snackbar(
-          "Reminder Save Error",
-          "Failed to save reminders: $e",
-          snackPosition: SnackPosition.BOTTOM,
+        MySnackbar.show(
+          title: "Reminder Save Error",
+          message: "Failed to save reminders: $e",
+          type: SnackbarType.error,
+          context: context,
         );
       }
       Get.back();
-      Get.snackbar(
-        margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-        "Invoice Updated",
-        "Invoice ${invoice.invoiceId} updated successfully",
-        snackPosition: SnackPosition.BOTTOM,
+      MySnackbar.show(
+        title: "$_documentLabel Updated",
+        message: "$_documentLabel ${invoice.invoiceId} updated successfully",
+        type: SnackbarType.success,
+        context: context,
       );
       return;
     } else {
@@ -455,11 +487,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       _customerSelectorVersion++;
     });
 
-    Get.snackbar(
-      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-      "Success",
-      "Invoice saved successfully",
-      snackPosition: SnackPosition.BOTTOM,
+    MySnackbar.show(
+      title: "Success",
+      message: "$_documentLabel saved successfully",
+      type: SnackbarType.success,
+      context: context,
     );
   }
 
@@ -483,13 +515,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               _mobileTopBar(),
               Container(
                 color: Colors.white,
-                child: const TabBar(
+                child: TabBar(
                   indicatorSize: TabBarIndicatorSize.label,
                   labelColor: Colors.black,
                   unselectedLabelColor: Colors.grey,
                   indicatorColor: Colors.black,
                   tabs: [
-                    Tab(text: 'Invoice'),
+                    Tab(text: _documentLabel),
                     Tab(text: 'Reminders'),
                   ],
                 ),
@@ -523,7 +555,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                isEditing ? "Edit Invoice" : "Create Invoice",
+                isEditing ? "Edit $_documentLabel" : "Create $_documentLabel",
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -551,7 +583,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             SizedBox(width: 10),
             InkWell(
               onTap: () async {
-                await showModalBottomSheet(
+                final result = await showModalBottomSheet<Customer>(
                   context: context,
                   isScrollControlled: true,
                   isDismissible: true,
@@ -574,6 +606,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 Get.find<CustomerController>().update();
                 setState(() {
                   _customerSelectorVersion++;
+                  if (result != null) {
+                    selectedCustomer = result;
+                    selectedVehicle = null;
+                  }
                 });
               },
               child: Container(
@@ -630,7 +666,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             ),
             InkWell(
               onTap: () async {
-                await showModalBottomSheet(
+                final result = await showModalBottomSheet<Vehicle>(
                   context: context,
                   isScrollControlled: true,
                   isDismissible: true,
@@ -653,6 +689,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 Get.find<VehicleController>().update();
                 setState(() {
                   _vehicleSelectorVersion++;
+                  if (result != null) {
+                    selectedVehicle = result;
+                  }
                 });
               },
               child: Container(
@@ -1070,8 +1109,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text("Add Reminder"),
+              icon: const Icon(Icons.add, size: 18, color: Colors.black),
+              label: const Text(
+                "Add Reminder",
+                style: TextStyle(color: Colors.black),
+              ),
             ),
           ),
         ],
@@ -1271,7 +1313,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         ),
         const SizedBox(width: 5),
         Text(
-          isEditing ? "Edit Invoice" : "Create Invoice",
+          isEditing ? "Edit $_documentLabel" : "Create $_documentLabel",
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ],
@@ -1290,13 +1332,20 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             InkWell(
-              onTap: () {
-                showDialog(
+              onTap: () async {
+                final result = await showDialog<Customer>(
                   context: context,
                   builder: (context) {
                     return const AddCustomerDialog();
                   },
                 );
+                if (result != null) {
+                  Get.find<CustomerController>().update();
+                  setState(() {
+                    selectedCustomer = result;
+                    selectedVehicle = null;
+                  });
+                }
               },
               child: Container(
                 decoration: BoxDecoration(
@@ -1349,13 +1398,19 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             InkWell(
-              onTap: () {
-                showDialog(
+              onTap: () async {
+                final result = await showDialog<Vehicle>(
                   context: context,
                   builder: (context) {
                     return const AddVehicleDialog();
                   },
                 );
+                if (result != null) {
+                  Get.find<VehicleController>().update();
+                  setState(() {
+                    selectedVehicle = result;
+                  });
+                }
               },
               child: Container(
                 decoration: BoxDecoration(
@@ -1678,8 +1733,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text("Add Reminder"),
+            icon: const Icon(Icons.add, size: 18, color: Colors.black),
+            label: const Text(
+              "Add Reminder",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ),
       ],
@@ -1829,13 +1887,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          "Invoice Items",
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+        Text(
+          "$_documentLabel Items",
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
         cButton(
           saveInvoice,
-          isEditing ? 'Update Invoice' : 'Save Invoice',
+          isEditing ? 'Update $_documentLabel' : 'Save $_documentLabel',
           true,
         ),
       ],
